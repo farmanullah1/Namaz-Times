@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/ic_launcher_img"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Left minaret -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M17,42 L17,25 L21,19 L25,25 L25,42 L28,46 L28,86 L14,86 L14,46 Z" />
+
+    <!-- Right minaret -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M83,42 L83,25 L87,19 L91,25 L91,42 L94,46 L94,86 L80,86 L80,46 Z" />
+
+    <!-- Main mosque silhouette -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M28,55 L28,48 C28,29 39,17 54,17 C69,17 80,29 80,48 L80,55 L86,55 L86,86 L22,86 L22,55 Z" />
+
+    <!-- Crescent accent -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M68,12 C61,12 55,18 55,26 C55,34 61,40 69,40 C64,36 62,31 62,26 C62,20 64,15 68,12 Z" />
+</vector>
