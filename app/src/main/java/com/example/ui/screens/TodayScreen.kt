@@ -252,7 +252,7 @@ private fun NextPrayerCard(
 ) {
     val next = today?.next
     FrostedCard {
-        if (next == null) {
+        if (today == null || next == null) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("No upcoming prayer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
@@ -282,7 +282,7 @@ private fun NextPrayerCard(
                 SourceBadge(next.source)
             }
             Text(
-                if (next.isTomorrow) "Tomorrow · ${formatClock(next.instant, today!!.zone)}" else formatClock(next.instant, today.zone),
+                if (next.isTomorrow) "Tomorrow · ${formatClock(next.instant, today.zone)}" else formatClock(next.instant, today.zone),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary
