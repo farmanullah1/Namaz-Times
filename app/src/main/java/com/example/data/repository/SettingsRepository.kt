@@ -61,6 +61,21 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    /** Serializes preferences for a backup file. */
+    fun encode(settings: AppSettings): String = toJson(settings).toString()
+
+    /** Applies an imported preference document after validating its structure. */
+    suspend fun applyEncoded(raw: String): Boolean {
+        val json = try {
+            JSONObject(raw)
+        } catch (error: org.json.JSONException) {
+            return false
+        }
+        if (!json.has("version")) return false
+        save(parse(raw))
+        return true
+    }
+
     suspend fun setOnboardingComplete() = update { it.copy(onboardingComplete = true) }
 
     suspend fun setThemeMode(mode: String) = update { it.copy(themeMode = mode) }

@@ -140,7 +140,9 @@ class QuranRepository(private val database: NamazDatabase) {
         val today = results.firstOrNull { it.dateKey == todayKey } ?: results.last()
         val previous = results.filter { it.dateKey.isBefore(todayKey) }
         val openingForToday = today.openingBalance
-        val targetForToday = (settings.dailyGoal + openingForToday).coerceAtLeast(0)
+        // The effective goal comes from goal history, so a change made today only applies from tomorrow.
+        val goalForToday = goalForDate(goals, todayKey)
+        val targetForToday = (goalForToday + openingForToday).coerceAtLeast(0)
         val completedToday = today.completedRukus
         val total = results.sumOf { it.completedRukus }.coerceAtLeast(0)
 
@@ -149,8 +151,8 @@ class QuranRepository(private val database: NamazDatabase) {
             target = targetForToday,
             completedToday = completedToday,
             remainingToday = (targetForToday - completedToday).coerceAtLeast(0),
-            backlog = (openingForToday + settings.dailyGoal - completedToday).coerceAtLeast(0),
-            surplusCredit = (-(openingForToday + settings.dailyGoal - completedToday)).coerceAtLeast(0),
+            backlog = (openingForToday + goalForToday - completedToday).coerceAtLeast(0),
+            surplusCredit = (-(openingForToday + goalForToday - completedToday)).coerceAtLeast(0),
             streak = QuranLedgerEngine.streak(results, todayKey, settings.streakCountsSurplus),
             totalCompleted = total,
             completionPercent = settings.editionTotalRukus?.takeIf { it > 0 }?.let { totalRukus ->
