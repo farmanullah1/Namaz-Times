@@ -25,7 +25,10 @@ object AppColors {
     val InkSecondary = Color(0xFF5A646C)
     val Teal = Color(0xFF0D6B62)
     val TealSoft = Color(0xFFDCEEEB)
-    val Gold = Color(0xFFB68A45)
+    val Gold = Color(0xFFD4AF37)
+    val GoldSoft = Color(0xFFFDF0CC)
+    val Emerald = Color(0xFF0D5A3D)
+    val EmeraldSoft = Color(0xFFE2F3EC)
     val Warning = Color(0xFF9A5B12)
 
     val DarkBackground = Color(0xFF050607)
@@ -35,6 +38,9 @@ object AppColors {
     val OffWhite = Color(0xFFF2F5F7)
     val Muted = Color(0xFFA8B2BA)
     val Mint = Color(0xFF5FD3C2)
+    val EmeraldDark = Color(0xFF072B1F)
+    val KaabaGold = Color(0xFFD4AF37)
+    val KaabaGoldGlow = Color(0xFFFFDF7D)
 }
 
 private val LightScheme = lightColorScheme(

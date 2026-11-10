@@ -332,7 +332,7 @@ class BackupRepository(
         database.placeDao().deleteAll()
     }
 
-    private fun importPlaces(array: JSONArray?) {
+    private suspend fun importPlaces(array: JSONArray?) {
         for (index in 0 until (array?.length() ?: 0)) {
             val row = array?.optJSONObject(index) ?: continue
             val id = row.optString("id").takeIf { it.isNotBlank() } ?: continue

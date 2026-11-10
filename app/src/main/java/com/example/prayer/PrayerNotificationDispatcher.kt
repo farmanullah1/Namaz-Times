@@ -141,7 +141,7 @@ class PrayerNotificationDispatcher(
         rebuildCoordinator.rebuild("Reminder delivered")
     }
 
-    private fun resolveSoundMode(
+    private suspend fun resolveSoundMode(
         mosqueId: String?,
         prayer: PrayerName,
         globalMode: ReminderSoundMode
@@ -166,7 +166,7 @@ class PrayerNotificationDispatcher(
         return formatTime(match.instantMillis, zone)
     }
 
-    private fun resolveZone(mosqueId: String?): ZoneId {
+    private suspend fun resolveZone(mosqueId: String?): ZoneId {
         val mosque = mosqueId?.let { database.mosqueDao().getProfile(it) }
         return runCatching { ZoneId.of(mosque?.timezoneId ?: ZoneId.systemDefault().id) }
             .getOrDefault(ZoneId.systemDefault())

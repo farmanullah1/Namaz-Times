@@ -2,18 +2,37 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CompassCalibration
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,19 +42,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.core.design.AppColors
 import com.example.core.design.FrostedCard
 import com.example.core.design.InfoBanner
 import com.example.core.design.LabeledValue
 import com.example.core.design.Pill
-import com.example.core.design.ScreenHeader
 import com.example.core.design.SecondaryButton
 import com.example.core.design.SectionTitle
 import com.example.navigation.PermissionActions
@@ -54,6 +80,7 @@ fun QiblaScreen(
     permissions: PermissionActions
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val compass = remember { CompassSensorManager(context) }
     val heading by compass.headingDegrees.collectAsState()
     val accuracy by compass.accuracy.collectAsState()
@@ -94,6 +121,16 @@ fun QiblaScreen(
         null
     }
     val difference = bearing?.let { QiblaCalculator.angularDifference(it, heading.toDouble()) }
+    val isAligned = difference != null && difference <= 4.0 && sensorAvailable
+
+    var wasAligned by remember { mutableStateOf(false) }
+    LaunchedEffect(isAligned) {
+        if (isAligned && !wasAligned) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+        wasAligned = isAligned
+    }
+
     val locationSource = when {
         manualLatitude != null -> "Manual coordinates"
         mosque?.latitude != null -> "Mosque: ${mosque.name}"
@@ -104,14 +141,14 @@ fun QiblaScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Column {
-                Text("Qibla", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold)
+                Text("Qibla", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "Bearing to the Kaaba from true north",
+                    "Great-circle bearing to the Kaaba in Makkah",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -120,7 +157,7 @@ fun QiblaScreen(
 
         item {
             FrostedCard {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (bearing == null) {
                         Text("Location needed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(
@@ -131,49 +168,109 @@ fun QiblaScreen(
                         )
                         SecondaryButton("Use current location", onClick = { permissions.requestForegroundLocation() })
                     } else {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Text(
-                                "${bearing.roundToInt()}°",
-                                style = MaterialTheme.typography.displayMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                                Pill(QiblaCalculator.cardinalDirection(bearing))
-                                androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
+                        // Bearing header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
                                 Text(
-                                    "from true north",
+                                    "${bearing.roundToInt()}°",
+                                    style = MaterialTheme.typography.displayMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isAligned) AppColors.Gold else MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Qibla bearing (True North)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Pill(QiblaCalculator.cardinalDirection(bearing))
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    distanceKm?.let { "%.0f km to Makkah".format(it) } ?: "",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
+
+                        // Alignment status indicator banner
+                        if (sensorAvailable) {
+                            val bannerColor by animateColorAsState(
+                                targetValue = if (isAligned) AppColors.EmeraldDark else MaterialTheme.colorScheme.surfaceVariant,
+                                animationSpec = tween(300),
+                                label = "bannerColor"
+                            )
+                            val borderColor = if (isAligned) AppColors.Gold else Color.Transparent
+
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = bannerColor,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isAligned) Icons.Default.CheckCircle else Icons.Default.RotateRight,
+                                        contentDescription = null,
+                                        tint = if (isAligned) AppColors.Gold else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            if (isAligned) "Aligned with the Kaaba! 🕋"
+                                            else {
+                                                val turnDirection = if (((heading - bearing + 360) % 360) > 180) "Turn right ↻" else "Turn left ↺"
+                                                "$turnDirection · ${difference?.roundToInt()}° off"
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = if (isAligned) AppColors.Gold else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            if (isAligned) "Face this direction for prayer"
+                                            else "Heading: ${heading.roundToInt()}° · Qibla: ${bearing.roundToInt()}°",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isAligned) AppColors.GoldSoft else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Compass Canvas
                         QiblaCompassCanvas(
                             bearing = bearing,
                             heading = heading.toDouble(),
-                            hasSensor = sensorAvailable
+                            hasSensor = sensorAvailable,
+                            isAligned = isAligned
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            LabeledValue("Device heading", "${heading.roundToInt()}°")
-                            LabeledValue("To Qibla", "${difference?.roundToInt() ?: 0}° off")
-                            LabeledValue("Distance", distanceKm?.let { "%.0f km".format(it) } ?: "—")
+
+                        // Stats Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            LabeledValue("Device Heading", "${heading.roundToInt()}°")
+                            LabeledValue("Offset", "${difference?.roundToInt() ?: 0}°")
+                            LabeledValue("Accuracy", accuracy.label)
                         }
-                        Text(
-                            if (!sensorAvailable) {
-                                "No compass sensor detected. Use the bearing number and a map; the needle is hidden."
-                            } else {
-                                when (accuracy) {
-                                    CompassAccuracy.HIGH -> "High compass confidence."
-                                    CompassAccuracy.MODERATE -> "Moderate compass confidence. Move away from metal and magnets."
-                                    CompassAccuracy.LOW -> "Low compass confidence — calibrate by moving the phone in a figure-8."
-                                    CompassAccuracy.UNAVAILABLE -> "Compass unavailable."
-                                }
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
+            }
+        }
+
+        // Tilt & Calibration guidance card
+        if (sensorAvailable && (accuracy == CompassAccuracy.LOW || accuracy == CompassAccuracy.MODERATE)) {
+            item {
+                CalibrationGuidanceCard(accuracy = accuracy)
             }
         }
 
@@ -251,10 +348,10 @@ fun QiblaScreen(
 
         if (bearing != null) {
             item {
-                SecondaryButton("Open the Kaaba in a map app", onClick = {
+                SecondaryButton("Open the Kaaba in Google Maps", onClick = {
                     val uri = Uri.parse(
                         "geo:${QiblaCalculator.KAABA_LATITUDE},${QiblaCalculator.KAABA_LONGITUDE}" +
-                            "?q=${QiblaCalculator.KAABA_LATITUDE},${QiblaCalculator.KAABA_LONGITUDE}(Kaaba)"
+                            "?q=${QiblaCalculator.KAABA_LATITUDE},${QiblaCalculator.KAABA_LONGITUDE}(Holy+Kaaba)"
                     )
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
                 })
@@ -264,16 +361,50 @@ fun QiblaScreen(
         item { SectionTitle("How to use the compass") }
         item {
             InfoBanner(
-                "Place the phone flat, away from magnets, metal tables and laptop speakers. The needle points to the " +
-                    "Qibla when the phone is level. The displayed bearing is measured from true north; the compass adds " +
-                    "magnetic declination for your coordinates, so it differs from a raw magnetic compass."
+                "Hold phone flat parallel to ground, away from magnets, metal tables and laptop speakers. " +
+                    "The golden Kaaba beacon points to Makkah. The compass automatically applies magnetic declination for your coordinates."
             )
         }
-        item {
-            InfoBanner(
-                "Qibla is a direction, not a guaranteed device measurement. If accuracy is low, use the bearing " +
-                    "number with a map instead of trusting the needle."
+    }
+}
+
+@Composable
+private fun CalibrationGuidanceCard(accuracy: CompassAccuracy) {
+    FrostedCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.CompassCalibration,
+                    contentDescription = null,
+                    tint = AppColors.Gold,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Calibrate Compass",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                "Sensor confidence is ${accuracy.label.lowercase()}. Follow these steps to calibrate the magnetometer:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "1. Wave phone gently in a figure-8 motion in the air 3–5 times.",
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    "2. Hold phone flat parallel to the ground (level with the horizon).",
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    "3. Step away from magnetic phone cases, metal frames, and laptop speakers.",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
     }
 }
@@ -282,63 +413,158 @@ fun QiblaScreen(
 private fun QiblaCompassCanvas(
     bearing: Double,
     heading: Double,
-    hasSensor: Boolean
+    hasSensor: Boolean,
+    isAligned: Boolean
 ) {
     val primary = MaterialTheme.colorScheme.primary
-    val ring = MaterialTheme.colorScheme.outline
-    val north = MaterialTheme.colorScheme.onSurfaceVariant
+    val outline = MaterialTheme.colorScheme.outline
+    val northColor = AppColors.Gold
     val centerColor = MaterialTheme.colorScheme.surfaceVariant
+    val alignedGlow = AppColors.KaabaGold
 
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(290.dp)
+            .height(310.dp)
     ) {
         val center = Offset(size.width / 2f, size.height / 2f)
-        val radius = size.minDimension / 2f - 18.dp.toPx()
-        drawCircle(color = ring.copy(alpha = 0.35f), radius = radius, center = center, style = Stroke(width = 2.dp.toPx()))
-        drawCircle(color = ring.copy(alpha = 0.18f), radius = radius * 0.7f, center = center, style = Stroke(width = 1.dp.toPx()))
+        val radius = size.minDimension / 2f - 20.dp.toPx()
 
+        // Outer glow when aligned
+        if (isAligned) {
+            drawCircle(
+                color = alignedGlow.copy(alpha = 0.20f),
+                radius = radius + 12.dp.toPx(),
+                center = center
+            )
+            drawCircle(
+                color = AppColors.Emerald.copy(alpha = 0.15f),
+                radius = radius + 6.dp.toPx(),
+                center = center
+            )
+        }
+
+        // Outer bezel ring
+        drawCircle(
+            color = if (isAligned) AppColors.Gold else outline.copy(alpha = 0.40f),
+            radius = radius,
+            center = center,
+            style = Stroke(width = if (isAligned) 3.dp.toPx() else 2.dp.toPx())
+        )
+
+        // Inner decorative ring
+        drawCircle(
+            color = outline.copy(alpha = 0.15f),
+            radius = radius * 0.72f,
+            center = center,
+            style = Stroke(width = 1.dp.toPx())
+        )
+
+        // Draw degree ticks (rotated by -heading so North stays oriented to device heading)
         rotate(degrees = -heading.toFloat(), pivot = center) {
+            for (deg in 0 until 360 step 5) {
+                val isMajor = deg % 30 == 0
+                val isCardinal = deg % 90 == 0
+                val tickLength = when {
+                    isCardinal -> 14.dp.toPx()
+                    isMajor -> 9.dp.toPx()
+                    else -> 4.dp.toPx()
+                }
+                val tickColor = when {
+                    deg == 0 -> northColor
+                    isCardinal -> outline.copy(alpha = 0.85f)
+                    isMajor -> outline.copy(alpha = 0.50f)
+                    else -> outline.copy(alpha = 0.25f)
+                }
+                val strokeWidth = when {
+                    deg == 0 -> 3.dp.toPx()
+                    isCardinal -> 2.dp.toPx()
+                    else -> 1.dp.toPx()
+                }
+
+                rotate(degrees = deg.toFloat(), pivot = center) {
+                    drawLine(
+                        color = tickColor,
+                        start = Offset(center.x, center.y - radius),
+                        end = Offset(center.x, center.y - radius + tickLength),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
+
+            // North Arrow indicator
             drawLine(
-                color = north,
-                start = center,
-                end = Offset(center.x, center.y - radius * 0.84f),
+                color = northColor,
+                start = Offset(center.x, center.y - radius * 0.4f),
+                end = Offset(center.x, center.y - radius * 0.86f),
                 strokeWidth = 3.dp.toPx(),
                 cap = StrokeCap.Round
             )
             drawCircle(
-                color = north,
-                radius = 5.dp.toPx(),
-                center = Offset(center.x, center.y - radius * 0.84f)
+                color = northColor,
+                radius = 4.dp.toPx(),
+                center = Offset(center.x, center.y - radius * 0.86f)
             )
         }
 
+        // Qibla Pointer Needle
         if (hasSensor) {
-            rotate(degrees = (bearing - heading).toFloat(), pivot = center) {
+            val qiblaAngle = (bearing - heading).toFloat()
+            rotate(degrees = qiblaAngle, pivot = center) {
+                val needleLength = radius * 0.80f
+                val needleTip = Offset(center.x, center.y - needleLength)
+
+                // Needle shaft
                 drawLine(
-                    color = primary.copy(alpha = 0.35f),
+                    color = if (isAligned) AppColors.Gold else primary.copy(alpha = 0.45f),
                     start = center,
-                    end = Offset(center.x, center.y - radius * 0.78f),
-                    strokeWidth = 14.dp.toPx(),
+                    end = needleTip,
+                    strokeWidth = if (isAligned) 14.dp.toPx() else 10.dp.toPx(),
                     cap = StrokeCap.Round
                 )
                 drawLine(
-                    color = primary,
+                    color = if (isAligned) AppColors.KaabaGold else primary,
                     start = center,
-                    end = Offset(center.x, center.y - radius * 0.78f),
-                    strokeWidth = 7.dp.toPx(),
+                    end = needleTip,
+                    strokeWidth = 6.dp.toPx(),
                     cap = StrokeCap.Round
                 )
+
+                // Kaaba Beacon (Stylized Cube at Tip)
+                val cubeSize = 22.dp.toPx()
+                val cubeLeft = needleTip.x - cubeSize / 2f
+                val cubeTop = needleTip.y - cubeSize / 2f
+
+                // Outer beacon glow
                 drawCircle(
-                    color = primary,
-                    radius = 10.dp.toPx(),
-                    center = Offset(center.x, center.y - radius * 0.78f)
+                    color = if (isAligned) AppColors.Gold else primary.copy(alpha = 0.4f),
+                    radius = cubeSize * 0.9f,
+                    center = needleTip
+                )
+
+                // Kaaba Black Cube body
+                drawRoundRect(
+                    color = Color(0xFF1E1E1E),
+                    topLeft = Offset(cubeLeft, cubeTop),
+                    size = Size(cubeSize, cubeSize),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                )
+                // Golden Kiswa band across upper portion
+                drawRect(
+                    color = AppColors.Gold,
+                    topLeft = Offset(cubeLeft, cubeTop + cubeSize * 0.22f),
+                    size = Size(cubeSize, cubeSize * 0.20f)
                 )
             }
         }
 
-        drawCircle(color = centerColor, radius = 12.dp.toPx(), center = center)
-        drawCircle(color = primary, radius = 5.dp.toPx(), center = center)
+        // Center Pivot
+        drawCircle(color = centerColor, radius = 14.dp.toPx(), center = center)
+        drawCircle(
+            color = if (isAligned) AppColors.Gold else primary,
+            radius = 6.dp.toPx(),
+            center = center
+        )
     }
 }

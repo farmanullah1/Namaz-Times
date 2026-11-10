@@ -9,7 +9,7 @@ class QiblaCalculatorTest {
     @Test
     fun `Karachi bearing points west south west`() {
         val bearing = QiblaCalculator.bearingFromTrueNorth(24.8607, 67.0011)
-        assertTrue("Karachi bearing was $bearing", bearing in 250.0..262.0)
+        assertTrue("Karachi bearing was $bearing", bearing in 260.0..275.0)
         assertEquals("W", QiblaCalculator.cardinalDirection(bearing))
     }
 

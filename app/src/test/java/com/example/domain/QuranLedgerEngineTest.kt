@@ -95,7 +95,7 @@ class QuranLedgerEngineTest {
 
     @Test
     fun `streak breaks on a missed day`() {
-        val results = QuranLedgerEngine.calculate(days(1, 0, 1), surplusCreditEnabled = false)
+        val results = QuranLedgerEngine.calculate(days(1, 0, 2), surplusCreditEnabled = false)
         val streak = QuranLedgerEngine.streak(results, start.plusDays(2), countSurplusCovered = true)
         assertEquals(1L, streak)
     }

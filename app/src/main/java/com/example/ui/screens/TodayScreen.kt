@@ -18,9 +18,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -41,6 +48,7 @@ import com.example.core.design.FrostedCard
 import com.example.core.design.InfoBanner
 import com.example.core.design.LabeledValue
 import com.example.core.design.Pill
+import com.example.core.design.PrayerProgressRing
 import com.example.core.design.PrimaryButton
 import com.example.core.design.SecondaryButton
 import com.example.core.design.SectionTitle
@@ -53,11 +61,15 @@ import com.example.domain.model.AppSettings
 import com.example.domain.model.LocationMode
 import com.example.domain.model.PrayerEventType
 import com.example.domain.model.PrayerName
+import com.example.domain.model.HadithRepository
+import com.example.domain.model.DailyHadith
 import com.example.domain.model.ResolvedPrayerTime
 import com.example.navigation.PermissionActions
 import com.example.prayer.TodayContext
 import com.example.ui.AppUiState
 import com.example.ui.AppViewModel
+import com.example.ui.components.SoundSelectorSheet
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -75,6 +87,7 @@ fun TodayScreen(
     val today = state.today
     val completed = remember(state.history) { state.history.associateBy { it.prayer } }
     var showMarkDialog by remember { mutableStateOf(false) }
+    var showSoundSheet by remember { mutableStateOf(false) }
     var detailPrayer by remember { mutableStateOf<PrayerName?>(null) }
 
     LazyColumn(
@@ -83,7 +96,23 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item { TodayHeader(state, today, onOpenPlaces) }
-        item { NextPrayerCard(state, today, onOpenMosques, onOpenQibla) }
+        item {
+            val nextPrayer = today?.next?.prayer
+            NextPrayerCard(
+                state = state,
+                today = today,
+                isCompleted = nextPrayer != null && completed[nextPrayer] != null,
+                onQuickMark = {
+                    nextPrayer?.let { viewModel.markPrayed(it, "Mosque", "", "") }
+                },
+                onOpenSoundSheet = { showSoundSheet = true },
+                onOpenMosques = onOpenMosques,
+                onOpenQibla = onOpenQibla
+            )
+        }
+        item {
+            DailyHadithCard(date = today?.today ?: LocalDate.now())
+        }
         item { ReminderWarnings(state, viewModel, permissions, onOpenMosques) }
 
         item { SectionTitle("Today's prayer timeline") }
@@ -93,7 +122,14 @@ fun TodayScreen(
                 resolved = today?.resolved?.get(prayer),
                 record = completed[prayer],
                 zone = today?.zone ?: java.time.ZoneId.systemDefault(),
-                onClick = { detailPrayer = prayer }
+                onClick = { detailPrayer = prayer },
+                onQuickMark = {
+                    if (completed[prayer] != null) {
+                        viewModel.undoPrayed(completed[prayer]!!.id)
+                    } else {
+                        viewModel.markPrayed(prayer, "Mosque", "", "")
+                    }
+                }
             )
         }
         if (today?.sunrise != null) {
@@ -165,6 +201,16 @@ fun TodayScreen(
             onUndo = { record -> record?.let { viewModel.undoPrayed(it.id) }; detailPrayer = null }
         )
     }
+
+    if (showSoundSheet) {
+        SoundSelectorSheet(
+            settings = state.settings,
+            onSetSoundMode = { mode, uri -> viewModel.setReminderSound(mode, uri) },
+            onSetSpokenAnnouncement = { enabled -> viewModel.setSpokenAnnouncements(enabled) },
+            onTestSound = { viewModel.testReminderSound() },
+            onDismiss = { showSoundSheet = false }
+        )
+    }
 }
 
 @Composable
@@ -204,6 +250,34 @@ private fun TodayHeader(state: AppUiState, today: TodayContext?, onOpenPlaces: (
             }
             if (state.hijri?.usedSunsetBoundary == true) {
                 Pill("After Maghrib")
+            }
+        }
+        val isMondayOrThursday = date.dayOfWeek == DayOfWeek.MONDAY || date.dayOfWeek == DayOfWeek.THURSDAY
+        val isAyyamAlBeed = state.hijri?.day in 13..15
+        if (isMondayOrThursday || isAyyamAlBeed) {
+            val fastLabel = if (isAyyamAlBeed) "🌙 Sunnah Fast: Ayyam al-Beed (White Days)"
+                else "🌙 Sunnah Fast: ${date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}"
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = AppColors.Gold.copy(alpha = 0.15f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.Gold.copy(alpha = 0.35f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = AppColors.Gold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        fastLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, color = AppColors.Gold)
+                    )
+                }
             }
         }
         Surface(
@@ -247,6 +321,9 @@ fun modeLabel(settings: AppSettings): String {
 private fun NextPrayerCard(
     state: AppUiState,
     today: TodayContext?,
+    isCompleted: Boolean,
+    onQuickMark: () -> Unit,
+    onOpenSoundSheet: () -> Unit,
     onOpenMosques: () -> Unit,
     onOpenQibla: () -> Unit
 ) {
@@ -265,69 +342,175 @@ private fun NextPrayerCard(
             return@FrostedCard
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    next.prayer.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    next.prayer.arabicTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.weight(1f))
+        val currentPrayer = today.currentPrayer
+        val start = currentPrayer?.let { today.resolved[it]?.adhan?.toEpochMilli() } ?: (next.instant.toEpochMilli() - 3 * 3600 * 1000L)
+        val end = next.instant.toEpochMilli()
+        val total = (end - start).coerceAtLeast(1L)
+        val elapsed = (state.nowMillis - start).coerceIn(0L, total)
+        val fraction = (elapsed.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Location and source status header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = AppColors.Gold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = next.mosqueName ?: "Calculated times",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
+                }
                 SourceBadge(next.source)
             }
-            Text(
-                if (next.isTomorrow) "Tomorrow · ${formatClock(next.instant, today.zone)}" else formatClock(next.instant, today.zone),
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+
+            // Animated Circular Progress Ring with live countdown
+            PrayerProgressRing(
+                progress = fraction,
+                countdownText = formatDuration(state.countdownMillis),
+                prayerTitle = next.prayer.title,
+                prayerArabicTitle = next.prayer.arabicTitle,
+                timeUntilLabel = if (next.isTomorrow) "Tomorrow" else "Next Prayer"
             )
-            Text(
-                formatDuration(state.countdownMillis) + " remaining",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+
+            // Adhan and Iqamah times with gold highlight
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
                 LabeledValue("Adhan", formatClock(next.instant, today.zone))
                 LabeledValue(
                     "Iqamah",
                     next.iqamah?.let { formatClock(it, today.zone) } ?: "Not entered",
-                    valueColor = if (next.iqamah == null) AppColors.Warning else MaterialTheme.colorScheme.onSurface
+                    valueColor = if (next.iqamah == null) AppColors.Warning else AppColors.Gold
                 )
             }
-            Text(
-                next.mosqueName ?: "Calculated — Travel mode",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            PrayerWindowProgress(today, state.nowMillis)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SecondaryButton("View timetable", onClick = onOpenMosques, modifier = Modifier.weight(1f))
-                SecondaryButton("Qibla", onClick = onOpenQibla, modifier = Modifier.weight(1f))
+
+            // One-tap Quick Mark button
+            if (isCompleted) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "${next.prayer.title} marked as prayed",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            } else {
+                PrimaryButton(
+                    text = "Mark ${next.prayer.title} as Prayed",
+                    onClick = onQuickMark,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Quick Actions: Sound, Qibla, Timetable
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SecondaryButton(
+                    text = "Adhan Audio",
+                    onClick = onOpenSoundSheet,
+                    modifier = Modifier.weight(1f)
+                )
+                SecondaryButton(
+                    text = "Qibla",
+                    onClick = onOpenQibla,
+                    modifier = Modifier.weight(1f)
+                )
+                SecondaryButton(
+                    text = "Timetable",
+                    onClick = onOpenMosques,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PrayerWindowProgress(today: TodayContext, nowMillis: Long) {
-    val currentPrayer = today.currentPrayer ?: return
-    val next = today.next ?: return
-    val start = today.resolved[currentPrayer]?.adhan?.toEpochMilli() ?: return
-    val end = next.instant.toEpochMilli()
-    if (end <= start) return
-    val fraction = ((nowMillis - start).toFloat() / (end - start).toFloat()).coerceIn(0f, 1f)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        SimpleProgressBar(progress = fraction, modifier = Modifier.padding(top = 6.dp))
-        Text(
-            "After ${currentPrayer.title} · ${today.occurrences.size} reminder event(s) today",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun DailyHadithCard(date: LocalDate) {
+    val hadith = remember(date) { HadithRepository.forDate(date) }
+    FrostedCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = AppColors.Gold,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Daily Hadith",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Pill(hadith.topic)
+            }
+            Text(
+                hadith.arabicText,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Gold,
+                    lineHeight = 24.sp
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "“${hadith.englishTranslation}”",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            )
+            Text(
+                "— ${hadith.narrator} · ${hadith.source}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -428,7 +611,8 @@ private fun PrayerTimelineRow(
     resolved: ResolvedPrayerTime?,
     record: PrayerHistoryRecord?,
     zone: java.time.ZoneId,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onQuickMark: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -437,7 +621,7 @@ private fun PrayerTimelineRow(
         onClick = onClick
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
@@ -450,13 +634,15 @@ private fun PrayerTimelineRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(Modifier.height(2.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
                         resolved?.adhan?.let { formatClock(it, zone) } ?: "Not entered",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
-                        resolved?.iqamah?.let { formatClock(it, zone) } ?: "Iqamah not entered",
+                        resolved?.iqamah?.let { "Iqamah " + formatClock(it, zone) } ?: "Iqamah not entered",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -469,10 +655,25 @@ private fun PrayerTimelineRow(
                     )
                 }
             }
-            if (record != null) {
-                Icon(Icons.Default.Check, contentDescription = "Marked as prayed", tint = MaterialTheme.colorScheme.primary)
-            } else {
-                Text("Not marked", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(
+                onClick = onQuickMark,
+                modifier = Modifier.size(48.dp)
+            ) {
+                if (record != null) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = "Marked - tap to undo",
+                        tint = AppColors.Gold,
+                        modifier = Modifier.size(26.dp)
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.RadioButtonUnchecked,
+                        contentDescription = "Tap to mark as prayed",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }

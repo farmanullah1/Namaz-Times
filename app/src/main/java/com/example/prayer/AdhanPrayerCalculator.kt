@@ -4,7 +4,7 @@ package com.example.prayer
 
 import com.batoulapps.adhan2.CalculationMethod
 import com.batoulapps.adhan2.Coordinates
-import com.batoulapps.adhan2.DateComponents
+import com.batoulapps.adhan2.data.DateComponents
 import com.batoulapps.adhan2.HighLatitudeRule
 import com.batoulapps.adhan2.Madhab
 import com.batoulapps.adhan2.PrayerAdjustments
@@ -98,6 +98,6 @@ class AdhanPrayerCalculator {
         HighLatitudeRuleOption.TWILIGHT_ANGLE -> HighLatitudeRule.TWILIGHT_ANGLE
     }
 
-    private fun toJavaInstant(value: kotlin.time.Instant): Instant =
-        Instant.ofEpochMilli(value.toEpochMilliseconds())
+    private fun kotlin.time.Instant.toJavaInstant(): Instant =
+        Instant.ofEpochMilli(toEpochMilliseconds())
 }

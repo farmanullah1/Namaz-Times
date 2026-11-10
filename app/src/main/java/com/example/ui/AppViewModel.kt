@@ -567,7 +567,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         maxFixAgeSeconds: Long
     ) = action {
         graph.settingsRepository.setSelectionThresholds(
-            maxDistanceMeters = maxDistanceMeters,
+            maximumNearestDistanceMeters = maxDistanceMeters,
             accuracyMeters = accuracyMeters,
             dwellSeconds = dwellSeconds,
             marginMeters = marginMeters,

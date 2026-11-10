@@ -41,7 +41,7 @@ class LocationRepository(private val context: Context) {
             LocationServices.getFusedLocationProviderClient(context)
         } catch (error: Exception) {
             Log.w(TAG, "Fused location provider unavailable; using platform provider.", error)
-            return platformLastKnown()
+            return platformLastKnown()?.toFix("platform")
         }
 
         val task = client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
