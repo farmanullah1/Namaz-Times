@@ -76,6 +76,28 @@ fun HistoryScreen(
 
             item {
                 FrostedCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Last 30 days", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        LabeledValue("Prayers marked", "${state.recentHistory.size}")
+                        LabeledValue("Days with at least one record", "${grouped.size}")
+                        Text(
+                            PrayerName.obligatories.joinToString("  ·  ") { prayer ->
+                                "${prayer.title} ${state.recentHistory.count { it.prayer == prayer }}"
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            "Counts describe what you recorded. They are not a score, a judgement or a claim about " +
+                                "prayers you did not mark.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            item {
+                FrostedCard {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         SettingSwitchRow(
                             title = "Track Qada separately",

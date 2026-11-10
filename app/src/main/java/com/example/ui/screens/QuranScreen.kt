@@ -141,6 +141,9 @@ fun QuranScreen(
                         SecondaryButton("Add with details", onClick = { showAddDialog = true }, modifier = Modifier.weight(1f))
                         SecondaryButton("Undo last", onClick = { viewModel.undoLastRuku() }, modifier = Modifier.weight(1f))
                     }
+                    TextButton(onClick = { showCorrectDialog = snapshot.todayDateKey }) {
+                        Text("Correct today's total")
+                    }
                     InfoBanner(
                         "Entries are append-only. A correction is saved as its own audited entry, so a day is never double-counted."
                     )
@@ -304,7 +307,11 @@ fun QuranScreen(
     showCorrectDialog?.let { date ->
         CorrectDayDialog(
             date = date,
-            currentTotal = snapshot.recentDays.firstOrNull { it.dateKey == date }?.completedRukus ?: 0,
+            currentTotal = if (date == snapshot.todayDateKey) {
+                snapshot.completedToday
+            } else {
+                snapshot.recentDays.firstOrNull { it.dateKey == date }?.completedRukus ?: 0
+            },
             onDismiss = { showCorrectDialog = null },
             onSave = { total, reason ->
                 viewModel.correctQuranDay(date, total, reason)
