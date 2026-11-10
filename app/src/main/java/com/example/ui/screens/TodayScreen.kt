@@ -92,6 +92,7 @@ fun TodayScreen(
                 prayer = prayer,
                 resolved = today?.resolved?.get(prayer),
                 record = completed[prayer],
+                zone = today?.zone ?: java.time.ZoneId.systemDefault(),
                 onClick = { detailPrayer = prayer }
             )
         }
@@ -426,6 +427,7 @@ private fun PrayerTimelineRow(
     prayer: PrayerName,
     resolved: ResolvedPrayerTime?,
     record: PrayerHistoryRecord?,
+    zone: java.time.ZoneId,
     onClick: () -> Unit
 ) {
     Surface(
@@ -450,11 +452,11 @@ private fun PrayerTimelineRow(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        resolved?.adhan?.let { formatLocalTime(it, resolved) } ?: "Not entered",
+                        resolved?.adhan?.let { formatClock(it, zone) } ?: "Not entered",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        resolved?.iqamah?.let { formatLocalTime(it, resolved) } ?: "Iqamah not entered",
+                        resolved?.iqamah?.let { formatClock(it, zone) } ?: "Iqamah not entered",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -474,11 +476,6 @@ private fun PrayerTimelineRow(
             }
         }
     }
-}
-
-private fun formatLocalTime(instant: java.time.Instant, resolved: ResolvedPrayerTime): String {
-    // Rendering uses the system zone; the schedule zone is applied by the caller for the hero card.
-    return com.example.core.time.formatClock(instant, java.time.ZoneId.systemDefault())
 }
 
 @Composable
@@ -513,7 +510,7 @@ private fun PrayerDetailDialog(
                 if (record != null) {
                     LabeledValue(
                         "Marked",
-                        record.completedAt.atZone(zone).toLocalTime().let { formatClock(it.hour, it.minute) } +
+                        formatClock(record.completedAt.atZone(zone).toLocalTime()) +
                             " · ${record.context.ifBlank { "No context" }}"
                     )
                     if (record.note.isNotBlank()) LabeledValue("Record note", record.note)

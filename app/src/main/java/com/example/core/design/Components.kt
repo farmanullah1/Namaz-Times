@@ -245,12 +245,13 @@ fun TimeEntryField(
     value: String?,
     onValueChange: (String?) -> Unit,
     enabled: Boolean = true,
-    supporting: String? = null
+    supporting: String? = null,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val parsed = WallClock.parse(value)
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
