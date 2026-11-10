@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Noor Salah</string>
+    <string name="qibla_compass">Qibla Compass</string>
+    <string name="prayer_times">Prayer Times</string>
+    <string name="mosques_locations">Mosques &amp; Locations</string>
+    <string name="hijri_calendar">Hijri Calendar</string>
+    <string name="settings">Settings</string>
+    <string name="fajr">Fajr</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="dhuhr">Dhuhr</string>
+    <string name="asr">Asr</string>
+    <string name="maghrib">Maghrib</string>
+    <string name="isha">Isha</string>
+    <string name="jummah">Jumu\'ah</string>
+    <string name="add_mosque">Add Mosque</string>
+    <string name="edit_mosque">Edit Mosque</string>
+    <string name="qibla_direction">Qibla Direction</string>
+</resources>
