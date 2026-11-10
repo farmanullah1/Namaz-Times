@@ -390,6 +390,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         postMessage("Prayer record removed.")
     }
 
+    fun updateHistoryRecord(record: PrayerHistoryRecord) = action {
+        graph.prayerHistoryRepository.updateRecord(record)
+        postMessage("Prayer record updated.")
+    }
+
     fun addQada(prayer: PrayerName, date: LocalDate, note: String) = action {
         graph.prayerHistoryRepository.addQada(prayer, date, note)
         postMessage("Qada record added.")

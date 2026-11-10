@@ -73,6 +73,19 @@ fun MosqueListScreen(
     val scope = rememberCoroutineScope()
     var deleteTarget by remember { mutableStateOf<MosqueProfile?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var search by remember { mutableStateOf("") }
+    val visibleMosques = remember(state.snapshot.mosques, search) {
+        val needle = search.trim()
+        if (needle.isEmpty()) {
+            state.snapshot.mosques
+        } else {
+            state.snapshot.mosques.filter { mosque ->
+                mosque.name.contains(needle, ignoreCase = true) ||
+                    mosque.addressLabel.contains(needle, ignoreCase = true) ||
+                    mosque.notes.contains(needle, ignoreCase = true)
+            }
+        }
+    }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -97,6 +110,21 @@ fun MosqueListScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     PrimaryButton("Add mosque profile", onClick = { onEdit(null) })
                     SecondaryButton("Import mosque profile", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) })
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        label = { Text("Search mosque profiles") },
+                        placeholder = { Text("Name, address or note") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (search.isNotBlank()) {
+                        Text(
+                            "${visibleMosques.size} of ${state.snapshot.mosques.size} profiles match.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     InfoBanner(
                         "The app never invents mosque times. Any prayer field you leave empty stays missing and is labelled " +
                             "«Not entered», even when calculated times are available as a fallback."
@@ -113,8 +141,17 @@ fun MosqueListScreen(
                         onAction = { onEdit(null) }
                     )
                 }
+            } else if (visibleMosques.isEmpty()) {
+                item {
+                    EmptyState(
+                        title = "No matching mosques",
+                        body = "No profile name, address or note matches this search.",
+                        actionLabel = "Clear search",
+                        onAction = { search = "" }
+                    )
+                }
             } else {
-                items(state.snapshot.mosques, key = { it.id }) { mosque ->
+                items(visibleMosques, key = { it.id }) { mosque ->
                     val schedules = state.snapshot.schedulesFor(mosque.id)
                     var menuExpanded by remember { mutableStateOf(false) }
                     FrostedCard {
