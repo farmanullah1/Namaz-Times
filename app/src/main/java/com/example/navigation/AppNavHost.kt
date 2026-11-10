@@ -96,18 +96,10 @@ fun AppNavHost(
                     tonalElevation = 6.dp()
                 ) {
                     MainTab.entries.forEach { tab ->
-                        val selected = stack.first().tab() == tab && current.tab() == tab
+                        val selected = stack.first().tab() == tab
                         NavigationBarItem(
                             selected = selected,
-                            onClick = {
-                                if (current !is AppDestination.Today && tab == MainTab.TODAY) {
-                                    stack = listOf(AppDestination.Today)
-                                } else if (current.tab() == tab && stack.size == 1) {
-                                    stack = listOf(tab.destination)
-                                } else {
-                                    stack = listOf(tab.destination)
-                                }
-                            },
+                            onClick = { stack = listOf(tab.destination) },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = {
                                 Text(

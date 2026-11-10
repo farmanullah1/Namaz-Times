@@ -465,13 +465,13 @@ fun MosqueEditorScreen(
                                             label = "Adhan",
                                             value = entry.adhan,
                                             onValueChange = { value -> entries = upsertEntry(entries, entry.copy(adhan = value)) },
-                                            modifierWeight = true
+                                            modifier = Modifier.weight(1f)
                                         )
                                         TimeEntryField(
                                             label = "Iqamah",
                                             value = entry.iqamah,
                                             onValueChange = { value -> entries = upsertEntry(entries, entry.copy(iqamah = value)) },
-                                            modifierWeight = true
+                                            modifier = Modifier.weight(1f)
                                         )
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -493,13 +493,13 @@ fun MosqueEditorScreen(
                                                 label = "Khutbah",
                                                 value = entry.khutbah,
                                                 onValueChange = { value -> entries = upsertEntry(entries, entry.copy(khutbah = value)) },
-                                                modifierWeight = true
+                                                modifier = Modifier.weight(1f)
                                             )
                                             TimeEntryField(
                                                 label = "Jumuah",
                                                 value = entry.jumuah,
                                                 onValueChange = { value -> entries = upsertEntry(entries, entry.copy(jumuah = value)) },
-                                                modifierWeight = true
+                                                modifier = Modifier.weight(1f)
                                             )
                                         }
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -507,7 +507,7 @@ fun MosqueEditorScreen(
                                                 label = "Second Jumuah",
                                                 value = entry.secondJumuah,
                                                 onValueChange = { value -> entries = upsertEntry(entries, entry.copy(secondJumuah = value)) },
-                                                modifierWeight = true
+                                                modifier = Modifier.weight(1f)
                                             )
                                             OutlinedTextField(
                                                 value = entry.fridayNote,

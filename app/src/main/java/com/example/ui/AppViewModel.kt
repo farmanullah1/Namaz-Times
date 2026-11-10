@@ -636,7 +636,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         remindersEnabled: Boolean,
         automaticSwitching: Boolean,
         silenceEnabled: Boolean,
-        silenceMinutes: Int
+        silenceMinutes: Int,
+        useCalculatedFallback: Boolean = false
     ) = action {
         if (mosque != null) {
             graph.mosqueRepository.upsertMosque(mosque)
@@ -662,14 +663,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (place != null) {
             graph.mosqueRepository.upsertPlace(place.copy(mosqueProfileId = mosque?.id ?: place.mosqueProfileId))
         }
-        when (mode) {
-            LocationMode.MANUAL -> graph.settingsRepository.setManualSelection(mosque?.id, place?.id)
-            LocationMode.AUTOMATIC -> graph.settingsRepository.setAutomaticLocationEnabled(true)
-            LocationMode.TEMPORARY -> graph.settingsRepository.setTemporarySelection(
-                mosqueId = mosque?.id ?: return@action,
-                placeId = place?.id,
-                durationHours = 2
-            )
+        if (useCalculatedFallback) {
+            graph.settingsRepository.setManualSelection(null, null)
+        } else {
+            when (mode) {
+                LocationMode.MANUAL -> graph.settingsRepository.setManualSelection(mosque?.id, place?.id)
+                LocationMode.AUTOMATIC -> graph.settingsRepository.setAutomaticLocationEnabled(true)
+                LocationMode.TEMPORARY -> graph.settingsRepository.setTemporarySelection(
+                    mosqueId = mosque?.id ?: return@action,
+                    placeId = place?.id,
+                    durationHours = 2
+                )
+            }
         }
         graph.settingsRepository.setRemindersEnabled(remindersEnabled)
         graph.settingsRepository.setSilenceSettings(silenceEnabled, silenceMinutes)

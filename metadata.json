@@ -1,6 +1,6 @@
 {
-  "name": "Noor Salah",
-  "description": "Location-based mosque prayer times, Ahl al-Hadith fiqh support, Qibla compass & Hijri calendar",
+  "name": "Namaz Times",
+  "description": "Local-first prayer companion: mosque timetables, labelled calculated fallback, Qibla, Hijri and Quran Ruku ledger",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
