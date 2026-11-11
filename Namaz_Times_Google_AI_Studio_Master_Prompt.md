@@ -44,6 +44,8 @@ The Markdown document is deliberately one self-contained master prompt. The gene
 18. Use current stable AndroidX/Jetpack dependencies compatible with the Android SDK and Google AI Studio environment. Pin dependencies to resolved versions; never invent artifact coordinates.
 19. Use a documented, maintained prayer-calculation library for astronomy. Do not write an untested approximation of solar-position mathematics.
 20. Do not include copyrighted Adhan recordings or proprietary fonts unless they are properly licensed. Allow the user to select/import their own audio.
+21. Do not add a Daily Hadith feature (card, widget, notification, screen, or content source). Keep the app focused on prayer times, Qibla, Hijri date, Quran Ruku tracking, and prayer history.
+22. Follow Part 13 exactly for the visual design: glassmorphism in light and dark themes, a yellow accent, large icon buttons, meaningful animations, a responsive layout, and zero overlapping elements.
 
 ## 1.3 Product definition
 
@@ -172,6 +174,8 @@ app/
       MainActivity.kt
       navigation/
         AppNavHost.kt
+        GlassBottomBar.kt
+        GlassNavigationRail.kt
         AppDestination.kt
       core/
         time/
@@ -188,7 +192,10 @@ app/
           AppTheme.kt
           AppColors.kt
           AppTypography.kt
-          FrostedCard.kt
+          GlassComponents.kt      (GlassCard, GlassButton, GlassSheet, GlassChip, StatusBanner, EmptyState)
+          GlassBackground.kt      (app-level gradient and glows)
+          MotionSpecs.kt          (durations, springs, Reduce Motion handling)
+          AnimatedIcons.kt        (animated nav, check, bell, sun/moon icons)
           AppIcons.kt
       data/
         local/
@@ -270,7 +277,7 @@ This is a logical organization guide. Adapt package/file names to Google AI Stud
 
 Use these implementation choices unless the current Android environment requires a compatible alternative:
 
-- Jetpack Compose + Material 3 for all app screens.
+- Jetpack Compose + Material 3 for all app screens, plus `material-icons-extended` (icon set) and `material3-window-size-class` (responsive layouts).
 - AndroidX Navigation Compose for navigation.
 - Room for durable relational app data.
 - DataStore Preferences for simple app settings and user preferences.
@@ -1458,114 +1465,1670 @@ Widget requirements:
 
 ---
 
-# PART 13 — UI / UX DESIGN SYSTEM
+# PART 13 — UI / UX DESIGN SYSTEM (GLASSMORPHISM, YELLOW ACCENT)
 
-## 13.1 Visual direction
+## 13.1 Design principles
 
-Create a premium, ultra-minimalist, thumb-friendly interface inspired by the visual qualities of modern frosted-glass mobile interfaces, including the user's requested “iOS 27-style” direction. This is a visual reference, not a request to copy proprietary system artwork or claim the app is iOS.
+Namaz Times must feel calm, bright, and effortless. Every screen follows five principles:
 
-Core visual qualities:
+1. **One main thing per screen.** Each screen has a single hero element (next prayer, Qibla arrow, Ruku ring). Everything else is secondary and visually quieter.
+2. **Large and obvious.** Large icons, large text, large touch targets. A user must be able to use the app one-handed, in a hurry, without reading small print.
+3. **Glass, not clutter.** Frosted-glass surfaces on a soft atmospheric background. No heavy borders, no dense tables on the main screens, no more than three card levels on any screen.
+4. **Motion with meaning.** Animation explains change (a prayer completing, a tab switching, a countdown rolling). It is never decoration that delays the user.
+5. **Never overlap.** No text, icon, button, or card may overlap another element at any screen size, font scale, or language (see 13.11).
 
-- Translucent frosted surfaces.
-- Light rim borders.
-- Controlled backdrop blur.
-- Soft, atmospheric backgrounds.
-- Clear typography and strong contrast.
-- Calm transitions and subtle motion.
-- Minimal visual clutter.
-- One-handed interaction.
+This is a visual direction (frosted glass, soft light, rounded geometry), not a request to copy any proprietary operating-system artwork. Use native Android conventions for back behavior, permission sheets, and system pickers.
 
-Use native Android interaction conventions, system back behavior, permission sheets, time/date pickers, accessibility semantics, and Material 3 behavior where appropriate.
+**Daily Hadith is explicitly out of scope.** Do not add a Daily Hadith card, widget, notification, screen, setting, or content source anywhere in the app. The Today screen, widgets, and notifications must contain only prayer, Qibla, Hijri, and Quran-reading content.
 
-## 13.2 Light theme
+## 13.2 Color system (yellow accent)
 
-- Background: warm/soft off-white, such as `#F4F5F7` with a subtle tonal gradient.
-- Primary frosted card: semi-transparent white with approximately 0.62–0.78 opacity depending on contrast needs.
-- Rim: subtle white border and a very light neutral edge.
-- Text: deep charcoal / near-black.
-- Secondary text: medium neutral grey with adequate contrast.
-- Accent: restrained deep teal, emerald, or the selected brand accent.
-- Avoid neon gradients and excessive saturated colors.
+Define all colors as semantic tokens in one `AppColors` object and expose them through a Compose `CompositionLocal`. Never hardcode a hex value inside a screen.
 
-## 13.3 Dark theme
+| Token | Light | Dark |
+|---|---|---|
+| `background` | `#F7F5EF` (warm off-white) | `#0B0B0D` (near-black) |
+| `backgroundGlowA` | `#FFE9A8` at 55% | `#FFC83D` at 18% |
+| `backgroundGlowB` | `#FFF6DA` at 70% | `#7A5B00` at 22% |
+| `glassSurface` | `#FFFFFF` at 62% | `#1A1A1F` at 58% |
+| `glassSurfaceStrong` | `#FFFFFF` at 82% | `#202026` at 78% |
+| `glassBorder` | `#FFFFFF` at 80% + `#000000` at 6% outer hairline | `#FFFFFF` at 14% |
+| `accent` | `#F5B700` (golden yellow) | `#FFCB2E` |
+| `accentSoft` | `#F5B700` at 18% | `#FFCB2E` at 20% |
+| `onAccent` | `#1C1500` (dark, high contrast on yellow) | `#1C1500` |
+| `textPrimary` | `#17140A` | `#F5F2E8` |
+| `textSecondary` | `#5E5842` | `#B9B49F` |
+| `success` | `#2E9E5B` | `#4CC983` |
+| `warning` | `#C97A00` | `#FFB347` |
+| `error` | `#C93A2E` | `#FF6B5E` |
 
-- Background: deep black / near-black such as `#050607` or `#0A0A0C`.
-- Frosted card: translucent black/dark grey surface.
-- Rim: subtle light border with low opacity.
-- Text: off-white.
-- Secondary text: readable muted grey, not too dim.
-- Accent: same hue family as light theme with contrast-adjusted brightness.
-- Do not use pure black text on dark cards or grey-on-grey illegible labels.
+Rules:
 
-## 13.4 Frosted glass implementation
+- **Yellow is an accent, not a flood.** Use it for the active navigation item, the next-prayer highlight, primary buttons, progress rings, and focus states. Do not tint entire screens yellow.
+- Text on a yellow fill must use `onAccent` (dark). Never put white text on yellow.
+- Yellow text on a light background fails contrast. Use `textPrimary` for text and yellow only for fills, rings, and icons that have a text label next to them.
+- Verify WCAG AA contrast (4.5:1 body text, 3:1 large text and icons) for every token pair in both themes and fix failures.
+- Support three theme modes in Settings: **System**, **Light**, **Dark**. Persist the choice in DataStore and apply it instantly with a short cross-fade (about 300 ms), not a restart.
+- Offer optional Android 12+ dynamic color as an off-by-default toggle; the yellow accent remains the default brand color.
+- Status colors (`success`, `warning`, `error`) are used only for statuses, and always paired with an icon and a text label, never color alone.
 
-Create a reusable `FrostedCard` composable:
+## 13.3 Background
 
-- Rounded corners approximately 22–28 dp.
-- Semi-transparent surface color.
-- Thin border.
-- Soft elevation/shadow.
-- Backdrop blur where supported by the Android version and Compose APIs used.
-- Fallback to a translucent surface without blur on devices where blur is unsupported or too expensive.
-- Avoid applying heavy blur to every pixel of the screen; use it on important surfaces only.
-- Ensure text contrast remains high over every background.
-- Respect Reduce Motion and low-power/device performance considerations.
+- The screen background is a soft gradient built from `background` plus two blurred radial glows (`backgroundGlowA`, `backgroundGlowB`) placed behind the content. This gives the glass cards something to blur against.
+- The glows drift very slowly (60–90 s loop, small offset) when animations are enabled. When Reduce Motion is on, they are static.
+- Draw the background once at the app-shell level (behind the navigation host), not per screen, so screen transitions do not flash.
+- Keep the background free of busy patterns, so text stays readable on every glass surface.
 
-Do not put essential text over a busy blurred background without a sufficiently opaque surface layer.
+## 13.4 Glass components
 
-## 13.5 One-handed layout
+Create these reusable composables and use them everywhere. No screen builds its own card from scratch.
 
-- Place bottom navigation within comfortable thumb reach.
-- Put primary actions in the lower half of the screen.
-- Put large titles and non-interactive status in the top area.
-- Use bottom sheets for frequent selection/edit actions when practical.
-- Keep destructive actions away from primary tap zones.
-- Do not require the user to reach the top-right corner for common actions.
-- Support large font/display scaling without clipped prayer times.
-- Use minimum touch targets of 48 dp or the current Android accessibility recommendation.
+### GlassCard
+
+- Corner radius: 28 dp for hero cards, 22 dp for standard cards, 16 dp for chips and small items.
+- Fill: `glassSurface` (or `glassSurfaceStrong` when the card holds dense text).
+- Border: 1 dp `glassBorder`, with a subtle top-left highlight gradient to suggest a light rim.
+- Soft, low shadow (large blur, low alpha). No hard drop shadows.
+- Backdrop blur on Android 12+ using the supported Compose blur/render-effect APIs on the background layer behind the card. On older devices, or when blur is unavailable or the device is in power-saving mode, fall back to the more opaque `glassSurfaceStrong` without blur. The fallback must look intentional, not broken.
+- Blur only the important surfaces (hero card, bottom navigation bar, bottom sheets, dialogs). Do not blur every list row.
+- Text on glass must always sit on a surface opaque enough to meet contrast requirements.
+
+### GlassButton (primary, secondary, icon)
+
+- **Primary:** solid `accent` fill, `onAccent` label and icon, 56 dp minimum height, fully rounded.
+- **Secondary:** glass fill with `glassBorder`, `textPrimary` label.
+- **Large icon button:** 64 dp circle or 72 × 72 dp rounded square, 32 dp icon, with a text label below it (12–14 sp, up to two lines). Used for the quick actions on Today.
+- Minimum touch target everywhere: 56 dp for primary controls, never below 48 dp.
+- Pressed state: scale to 0.96 with a spring, plus a soft ripple. Disabled state: reduced opacity plus a visible reason when the reason is not obvious.
+
+### GlassSheet and GlassDialog
+
+- Frequent actions (switch mosque, mark prayed, add Ruku, set timer) use a bottom sheet with a drag handle, rounded top corners (28 dp), and large option rows (at least 64 dp tall).
+- Dialogs are reserved for destructive confirmations and short permission explanations. Destructive buttons are never the default or the largest button.
+
+### Other shared components
+
+- `GlassChip` for source badges (**Mosque timetable**, **Calculated**, **Manual override**, **Travel**), always with an icon and a text label.
+- `GlassSwitchRow` for settings (large row, at least 64 dp, switch on the trailing side, subtitle explaining what it does).
+- `GlassTextField` and `TimeCell` (tap opens the native time picker).
+- `StatusBanner` for permission and reliability warnings, with one clear action button.
+- `EmptyState` with an icon, one sentence, and one primary action.
+- `GlassSnackbar` with Undo for any reversible action.
+
+## 13.5 Iconography (large, simple, animated)
+
+- Use one consistent icon family (Material Symbols Rounded, or custom vector drawables in the same rounded style). Do not mix styles.
+- Sizes: 32 dp for action buttons, 28 dp in bottom navigation, 24 dp inside list rows, 20 dp only inside chips. Never smaller than 20 dp.
+- Every icon that carries meaning has a text label or a `contentDescription`.
+- Icons use `textSecondary` when inactive and `accent` or `textPrimary` when active.
+
+### Icon animations (all required, all skippable by Reduce Motion)
+
+| Where | Animation |
+|---|---|
+| Bottom navigation icon on select | Spring bounce (scale 1 → 1.18 → 1), icon switches from outline to filled, label fades in, active pill slides to the new tab |
+| Next-prayer icon (sun/moon by prayer) | Gentle breathing glow (3–4 s loop, ±4% scale and soft glow) |
+| Prayer row icon when marked prayed | Checkmark draws itself (path trim 0 → 100%, about 350 ms) inside a circle that fills with `accent`, plus a light haptic tick |
+| Qibla arrow | Rotates smoothly using a spring toward the target; when aligned within ±3°, the ring glows `success` and the device gives one short haptic pulse (once per alignment, not repeatedly) |
+| Bell / reminder toggle | Bell icon swings (rotation ±15°, damped) when switched on; muted bell icon "settles" when switched off |
+| Quran +1 button | Press bursts a small ring ripple, number rolls upward, progress ring animates to the new value |
+| Theme toggle | Sun icon morphs to moon (rotation + crossfade) |
+| Loading | A small animated crescent or ring, never a blank screen. Use shimmer placeholders for lists |
+| Alarm repaired / success | Checkmark draw plus brief accent pulse |
+
+Implementation notes: use Compose `animate*AsState`, `updateTransition`, `Animatable`, `AnimatedContent`, `AnimatedVisibility`, and vector path animation (or `AnimatedVectorDrawable`). Do not add heavy third-party animation libraries unless a Compose-native solution is genuinely insufficient.
 
 ## 13.6 Typography and spacing
 
-Suggested visual tokens:
+- Use the system font family (or a properly licensed font bundled in the app) with a clear hierarchy. Support Arabic shaping and RTL layout, and use a legible Arabic-capable font for Arabic prayer names.
+- Large text scale:
+  - Screen title: 30–34 sp, semi-bold.
+  - Next prayer name: 28–32 sp.
+  - Countdown: 44–56 sp, tabular numerals, monospaced digits so the layout never jumps.
+  - Prayer row name: 18 sp; prayer time: 18–20 sp, tabular numerals.
+  - Body: 16 sp. Secondary labels: 14 sp. Nothing below 12 sp.
+- Spacing scale (use only these tokens): 4, 8, 12, 16, 20, 24, 32 dp.
+- Screen horizontal padding: 20 dp (16 dp on screens narrower than 360 dp).
+- Space between cards: 16 dp. Card inner padding: 20 dp.
+- Respect system font scaling up to at least 200% without clipping or overlap (see 13.11).
 
-- Screen horizontal padding: 20 dp on normal phones, adaptive on narrow phones.
-- Card spacing: 12–16 dp.
-- Card internal padding: 16–20 dp.
-- Small radius: 12–16 dp.
-- Main card radius: 24–28 dp.
-- Page title: 28–34 sp depending on width.
-- Next prayer name: 24–30 sp.
-- Countdown: 34–44 sp, tabular numerals.
-- Prayer row name: 15–17 sp.
-- Time labels: 14–16 sp.
-- Secondary labels: 12–14 sp, subject to contrast/accessibility.
+## 13.7 Motion and transitions
 
-Use system typography or properly licensed fonts. Support Arabic shaping and right-to-left layout.
+Default durations: micro-interactions 120–200 ms, element transitions 250–350 ms, screen transitions 300–400 ms. Use spring or emphasized-decelerate easing. Avoid linear motion.
 
-## 13.7 Motion
+- **Screen transitions between tabs:** shared fade-through (outgoing fades and scales to 0.98, incoming fades and scales from 0.98), about 300 ms. Direction-aware slide is used only for deeper screens (push/pop).
+- **Detail screens** (mosque editor, history day): slide in from the trailing edge with a fade; back reverses it. Predictive back must be supported.
+- **Next-prayer change:** the hero card cross-fades with a soft vertical slide; the countdown digits roll (each digit animates independently) instead of snapping.
+- **Cards on first appear:** staggered entrance (fade plus 12 dp upward slide, 40 ms stagger, max 6 items animated, the rest appear immediately).
+- **Prayer timeline:** the connector line fills with `accent` up to the current prayer; the current prayer row gently highlights.
+- **Bottom sheets:** spring-based expand/collapse with a dimmed scrim.
+- **Theme change:** 300 ms cross-fade of colors.
+- **Lists:** `animateItemPlacement` for reordering (priority order of places), swipe-to-dismiss with a reveal background.
+- **Performance rules:** animate only `graphicsLayer` properties (alpha, scale, translation, rotation) where possible; avoid animating layout size every frame on long lists; keep frame time within budget on mid-range phones; limit continuously looping animations to at most two visible at once.
+- **Reduce Motion:** when the system animator duration scale is 0 or the in-app "Reduce motion" setting is on, replace movement with instant or simple fade changes, stop all looping animations (breathing glow, drifting background), and keep state changes clear without motion.
+- Provide an in-app **Animations** setting: Full, Reduced, Off. Default: follows the system setting.
 
-- Gentle fade/scale for changing next prayer card.
-- Smooth countdown text updates without layout jumping.
-- Short navigation transitions.
-- Subtle haptic feedback for completed prayer or Ruku entry where enabled.
-- Avoid constant, distracting particle effects.
-- Respect Android animator duration scale and accessibility settings.
+## 13.8 Navigation (refined)
 
-## 13.8 Bottom navigation
+### Primary navigation: floating glass bottom bar
 
-Five main destinations:
+Five destinations, always visible on top-level screens:
 
-- Today.
-- Places.
-- Qibla.
-- Quran.
-- More.
+| Tab | Icon (outline → filled) | Content |
+|---|---|---|
+| **Today** | sun/moon with clock | Next prayer, timeline, quick actions |
+| **Qibla** | compass | Compass and bearing |
+| **Quran** | open book | Ruku target, progress, backlog |
+| **Places** | map pin | Saved places, mosques, mode switching |
+| **More** | grid/menu | History, Qada, settings, backup, reliability |
 
-Use clear icons plus labels. The active state should be obvious in both themes. Do not use icons alone without an accessible label.
+Bar behavior and design:
+
+- A floating, rounded (32 dp) glass bar inset 16 dp from the left, right, and bottom edges, with the system navigation-bar inset added, so it never collides with the gesture area.
+- Bar height: 72 dp. Each item has a minimum 64 × 56 dp touch target, with a 28 dp icon and a 12–13 sp label **always visible**.
+- An animated pill (`accentSoft` fill) slides behind the selected item with a spring; the icon turns filled and `accent`/`textPrimary`.
+- Scroll content has bottom padding equal to the bar height plus its margins plus the system inset, so the last item is never hidden behind the bar.
+- The bar hides smoothly (slide down and fade) when the keyboard is open, in full-screen sub-flows (mosque editor, onboarding), and while the user scrolls down a long list (it returns when they scroll up or stop). It must never cover a primary action; screens with a bottom primary button reserve space above the bar or hide the bar.
+- Re-tapping the active tab scrolls that screen to the top; if already at the top, it pops back to that tab's root.
+- Each tab keeps its own back stack and scroll position (use saved state in Navigation Compose). Switching tabs never resets the user's place.
+- Badges: a small dot on **More** when a reliability issue (for example, notifications blocked or exact alarm missing) needs attention. The dot has an accessible description.
+- On landscape and tablets/foldables (width ≥ 600 dp), replace the bottom bar with a vertical glass navigation rail on the leading edge, using the same icons, labels, and pill animation.
+
+### Top-level screen header
+
+- A large title row (title on the leading side, one optional 48 dp icon action on the trailing side) that collapses to a compact title on scroll.
+- No more than one trailing action in the header. Everything else moves to a bottom sheet or the screen body.
+
+### Secondary navigation
+
+- Detail screens (Mosque editor, Timetable, History day, Qada, Calculation settings, Reliability, Backup) show a 48 dp back button at the top-leading position and respect system back and predictive back.
+- **More** is organized as large grouped rows with icons: *Prayer* (History, Qada, Calculation), *Reminders* (Notifications and Adhan, Silence, Reliability), *App* (Appearance, Hijri, Widgets, Backup, Privacy, About). Include a search field at the top of Settings that filters rows live.
+- **Mosque profiles** live under **Places** as a top segmented control: **Places | Mosques**.
+- Deep links from notifications, widgets, and app shortcuts open the correct destination with a correct back stack (for example, a Qibla action opens Qibla, and Back returns to Today).
+- Add launcher **app shortcuts** (long-press): Next prayer, Qibla, Add Ruku.
+
+## 13.9 Responsive layout
+
+Use window size classes (`WindowSizeClass`) and `BoxWithConstraints`; never fixed pixel layouts.
+
+| Width | Layout |
+|---|---|
+| < 360 dp (compact-small) | Single column, 16 dp padding, quick-action grid 2 columns, countdown scales down to 44 sp |
+| 360–599 dp (phone) | Single column, 20 dp padding, quick-action grid 4 across (or 2 × 2), full-size type |
+| 600–839 dp (large phone landscape, foldable, small tablet) | Navigation rail, two-pane Today (hero + quick actions on one side, timeline on the other) |
+| ≥ 840 dp (tablet) | Navigation rail, two- or three-column cards, content max width 840 dp centered |
+
+- Landscape phones: Today hero and timeline sit side by side; Qibla compass sits beside its details; no vertical clipping.
+- Foldables: respond to window size changes without restarting or losing state.
+- The planned tablet and the user's 6.78-inch phone must both be treated as first-class layouts.
+- Every screen scrolls vertically when content exceeds the viewport. Nothing important is ever cut off.
+
+## 13.10 Today screen layout (hero-first)
+
+Top to bottom:
+
+1. **Header (calm):** greeting-free; Gregorian date, Hijri date (with an **Adjusted** marker if applicable), and one `GlassChip` showing the active place/mosque and mode. One trailing 48 dp icon (theme or notifications status).
+2. **Hero GlassCard (next prayer):** large animated prayer icon, prayer name (English plus Arabic), 56 sp countdown, "Adhan 5:20 AM · Iqamah 5:40 AM" (or "Iqamah not entered"), source chip, and a thin progress arc or bar showing time elapsed since the previous prayer.
+3. **Quick actions row (large icon buttons):** *Mark prayed*, *Qibla*, *Add Ruku*, *Switch mosque*. Each is a 72 dp icon button with a label below. Reachable in the lower half of the screen where possible.
+4. **Timeline card:** five prayer rows (see 13.12), with the current prayer highlighted and the connector line filled to the current point.
+5. **Status banner (only when needed):** one banner at a time for the most important issue (for example, notifications blocked). Never stack more than one banner; a "1 more issue" link opens Reliability.
+
+Rules:
+
+- Do not show Sunrise as a prayer row. Show it as a small informational line under the timeline ("Sunrise 6:45 AM · calculated").
+- Friday: the Dhuhr row becomes **Jumuah** with Khutbah and Jumuah times when entered.
+- The hero card never shows invented times. States such as no mosque, missing times, and permission denied show an `EmptyState` with a single clear action.
+
+## 13.11 No-overlap and robustness rules (mandatory)
+
+These rules are acceptance-critical:
+
+1. Use `Column`, `Row`, `LazyColumn`, and `FlowRow` with proper arrangement and weights. Do not position content with absolute offsets except for decorative glows, which must never sit above content.
+2. Every `Text` has `maxLines` and `overflow = TextOverflow.Ellipsis` where truncation is acceptable, and is allowed to wrap where full text is essential (prayer names, times, countdown, permission explanations).
+3. Rows with label + value use `weight(1f)` on the flexible side and `wrapContentWidth` on the value side so a long mosque name can never push a time off screen. Long mosque and place names wrap to two lines then ellipsize.
+4. Countdown and time text use tabular numerals and a fixed minimum width, so changing digits do not shift neighbors.
+5. Insets: apply `WindowInsets.systemBars`, display cutout, and IME insets correctly. The floating navigation bar, bottom sheets, and snackbars stack in a defined order: content → snackbar → navigation bar. A snackbar is never drawn over the navigation bar's tap targets.
+6. Keyboard: when the keyboard opens, the focused field scrolls into view, the navigation bar hides, and the primary action stays reachable.
+7. Font scale up to 200% and display size "Largest": text wraps, containers grow, grids reduce columns, and no label is clipped. Quick-action grids switch from 4 columns to 2 columns automatically when labels would not fit.
+8. Bottom content padding always includes the navigation bar height plus insets.
+9. RTL and Arabic: layout mirrors correctly, icons that indicate direction flip, numerals remain readable.
+10. Z-order is defined: background → content → sheets → snackbar → dialogs. Nothing decorative is above interactive content.
+11. Add Compose previews and UI tests at these configurations: 320 dp, 360 dp, 411 dp, 600 dp, 840 dp widths; font scale 1.0, 1.5, 2.0; light/dark; LTR/RTL; and verify no clipped or overlapping nodes (use bounds assertions in tests where practical).
+
+## 13.12 Component details and functional UX improvements
+
+### Prayer row
+
+- Height at least 72 dp. Leading: 32 dp prayer icon in a circular glass container. Center: prayer name (18 sp) plus Arabic name (14 sp). Trailing: Adhan time (18 sp) over Iqamah time (14 sp, secondary).
+- A trailing 48 dp circular check button marks the prayer as prayed (animated check, haptic). Tapping the row opens the detail sheet.
+- States: *upcoming* (normal), *current* (accent border and soft glow), *passed and not marked* (neutral, no guilt-inducing color, no red), *marked* (filled accent check).
+- Swipe a row to the right to mark as prayed, with an Undo snackbar. Swipe is a shortcut only; the check button always exists.
+
+### Faster, easier actions
+
+- **One-tap mark prayed** from the hero card, from the notification action, and from the widget (where supported).
+- **Undo everywhere:** marking prayers, adding Rukus, deleting a place, disabling a mosque all show a Snackbar with Undo for at least 6 seconds.
+- **Smart quick switch:** the *Switch mosque* button opens a bottom sheet listing the saved mosques with large rows, a current selection tick, and three clear choices at the top: **Automatic**, **Manual (lock)**, **Temporary (choose hours)**.
+- **Time entry:** the mosque editor offers a "Copy Adhan to all days" and "Add same offset for Iqamah" helper (for example, Iqamah = Adhan + N minutes), applied only when the user confirms and the values remain editable. These helpers must not run silently or prefill fake data.
+- **Setup checklist card** on Today until all essentials are done (mosque times, notifications, exact alarms, Qibla sensor), collapsible, with progress and one action per row.
+- **Search** in Places, Mosques, Settings, and History.
+- **Haptics:** light tick for toggles and marks, a short confirm pulse for Qibla alignment and Ruku completion. Respect system haptic settings and an in-app toggle.
+- **Quran quick add:** the Quran screen's main button is a 72 dp `+1 Ruku` control with an animated ring; `+2`, `+3`, and custom are in a long-press menu and a visible "More" chip. Completing the day's target triggers a gentle celebration (ring fills, soft sparkle that respects Reduce Motion) without shaming when it is not completed.
+- **Glanceable status:** every top-level screen shows its state (mode, source, accuracy) as a single chip, not as paragraphs of text.
+- **First-run polish:** onboarding screens use large illustrations built from the same glass and icon style, a visible progress indicator, **Skip** and **Back** on every step, and animated transitions between steps.
+- **Settings clarity:** every setting row has a one-line plain-language description; risky or restricted options (background location, Do Not Disturb, exact alarms) show an inline "Why this is needed" expandable explanation before opening system settings.
+- **Accessibility:** TalkBack labels and state descriptions on every control, logical focus order, 48 dp minimum targets, no information conveyed by color alone, and support for the largest font and display sizes.
+
+## 13.13 Visual quality checklist
+
+- [ ] Light and dark themes both use glass surfaces, with a yellow accent and readable text everywhere.
+- [ ] Blur works on supported devices and falls back cleanly where it does not.
+- [ ] Every interactive control is at least 48 dp (primary controls 56 dp+) and uses large icons with labels.
+- [ ] Navigation bar animation, tab state restoration, and rail layout on wide screens all work.
+- [ ] All animations in 13.5 and 13.7 exist and are disabled or simplified by Reduce Motion.
+- [ ] No overlap or clipping at any width, font scale, theme, or direction listed in 13.11.
+- [ ] No Daily Hadith content exists anywhere in the app.
+
+## 13.14 Reference Compose code (design system, motion, navigation, shell)
+
+This is the reference implementation of Part 13. Generate these files, adapt imports and APIs to the resolved dependency versions, and **compile them**. Do not leave a non-compiling sample in the project. Additional dependencies for this section (resolve and pin real versions, never invent coordinates):
+
+- `androidx.compose.material:material-icons-extended`
+- `androidx.compose.material3:material3-window-size-class`
+- Optional: a maintained backdrop-blur library (for example Haze) for true blur *behind* glass cards on Android 12+. Plain `Modifier.blur` blurs the element's own content, not what is behind it, so do not use it on cards. Without such a library, keep the translucent glass fill and use the opaque `glassSurfaceStrong` fallback described in 13.4.
+
+All user-visible strings below come from `strings.xml` (`R.string.*`). Add every referenced string, plus Urdu/Arabic translations where provided.
+
+### 13.14.1 `core/design/AppColors.kt`
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+
+@Immutable
+data class AppColors(
+    val isDark: Boolean,
+    val background: Color,
+    val glowA: Color,
+    val glowB: Color,
+    val glassSurface: Color,
+    val glassSurfaceStrong: Color,
+    val glassBorder: Color,
+    val accent: Color,
+    val accentSoft: Color,
+    val onAccent: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val success: Color,
+    val warning: Color,
+    val error: Color
+)
+
+val LightAppColors = AppColors(
+    isDark = false,
+    background = Color(0xFFF7F5EF),
+    glowA = Color(0x8CFFE9A8),
+    glowB = Color(0xB3FFF6DA),
+    glassSurface = Color(0x9EFFFFFF),
+    glassSurfaceStrong = Color(0xD1FFFFFF),
+    glassBorder = Color(0xCCFFFFFF),
+    accent = Color(0xFFF5B700),
+    accentSoft = Color(0x2EF5B700),
+    onAccent = Color(0xFF1C1500),
+    textPrimary = Color(0xFF17140A),
+    textSecondary = Color(0xFF5E5842),
+    success = Color(0xFF2E9E5B),
+    warning = Color(0xFFC97A00),
+    error = Color(0xFFC93A2E)
+)
+
+val DarkAppColors = AppColors(
+    isDark = true,
+    background = Color(0xFF0B0B0D),
+    glowA = Color(0x2EFFC83D),
+    glowB = Color(0x387A5B00),
+    glassSurface = Color(0x941A1A1F),
+    glassSurfaceStrong = Color(0xC7202026),
+    glassBorder = Color(0x24FFFFFF),
+    accent = Color(0xFFFFCB2E),
+    accentSoft = Color(0x33FFCB2E),
+    onAccent = Color(0xFF1C1500),
+    textPrimary = Color(0xFFF5F2E8),
+    textSecondary = Color(0xFFB9B49F),
+    success = Color(0xFF4CC983),
+    warning = Color(0xFFFFB347),
+    error = Color(0xFFFF6B5E)
+)
+
+val LocalAppColors = staticCompositionLocalOf { LightAppColors }
+
+/** Cross-fades every token when the theme changes (about 300 ms). */
+@Composable
+fun animateAppColors(target: AppColors, durationMillis: Int): AppColors {
+    @Composable
+    fun c(color: Color) = animateColorAsState(color, tween(durationMillis), label = "themeColor").value
+    return AppColors(
+        isDark = target.isDark,
+        background = c(target.background),
+        glowA = c(target.glowA),
+        glowB = c(target.glowB),
+        glassSurface = c(target.glassSurface),
+        glassSurfaceStrong = c(target.glassSurfaceStrong),
+        glassBorder = c(target.glassBorder),
+        accent = c(target.accent),
+        accentSoft = c(target.accentSoft),
+        onAccent = c(target.onAccent),
+        textPrimary = c(target.textPrimary),
+        textSecondary = c(target.textSecondary),
+        success = c(target.success),
+        warning = c(target.warning),
+        error = c(target.error)
+    )
+}
+```
+
+### 13.14.2 `core/design/MotionSpecs.kt`
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import android.provider.Settings
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalContext
+
+enum class AnimationSetting { FOLLOW_SYSTEM, FULL, REDUCED, OFF }
+
+@Immutable
+data class Motion(val reduced: Boolean) {
+    /** Returns 0 when motion is reduced so state changes stay instant and clear. */
+    fun ms(base: Int): Int = if (reduced) 0 else base
+
+    companion object {
+        const val MICRO = 160
+        const val ELEMENT = 300
+        const val SCREEN = 340
+        const val THEME = 300
+    }
+}
+
+val LocalMotion = staticCompositionLocalOf { Motion(reduced = false) }
+
+@Composable
+fun rememberMotion(setting: AnimationSetting): Motion {
+    val context = LocalContext.current
+    return remember(setting) {
+        val systemOff = Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+        Motion(
+            reduced = when (setting) {
+                AnimationSetting.FOLLOW_SYSTEM -> systemOff
+                AnimationSetting.FULL -> false
+                AnimationSetting.REDUCED, AnimationSetting.OFF -> true
+            }
+        )
+    }
+}
+```
+
+### 13.14.3 `core/design/AppTheme.kt`
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+val AppTypography = Typography(
+    headlineLarge = TextStyle(fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold),
+    headlineMedium = TextStyle(fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold),
+    titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
+    titleMedium = TextStyle(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = TextStyle(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+)
+
+@Composable
+fun AppTheme(
+    mode: ThemeMode,
+    animationSetting: AnimationSetting,
+    content: @Composable () -> Unit
+) {
+    val dark = when (mode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    val motion = rememberMotion(animationSetting)
+    val colors = animateAppColors(
+        target = if (dark) DarkAppColors else LightAppColors,
+        durationMillis = motion.ms(Motion.THEME)
+    )
+    val scheme = if (dark) {
+        darkColorScheme(
+            primary = colors.accent, onPrimary = colors.onAccent,
+            background = colors.background, onBackground = colors.textPrimary,
+            surface = colors.background, onSurface = colors.textPrimary,
+            onSurfaceVariant = colors.textSecondary, error = colors.error
+        )
+    } else {
+        lightColorScheme(
+            primary = colors.accent, onPrimary = colors.onAccent,
+            background = colors.background, onBackground = colors.textPrimary,
+            surface = colors.background, onSurface = colors.textPrimary,
+            onSurfaceVariant = colors.textSecondary, error = colors.error
+        )
+    }
+    CompositionLocalProvider(LocalAppColors provides colors, LocalMotion provides motion) {
+        MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
+    }
+}
+```
+
+### 13.14.4 `core/design/GlassBackground.kt`
+
+Draw this once at the app-shell level, behind the navigation host.
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+
+@Composable
+fun GlassBackground(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val colors = LocalAppColors.current
+    val motion = LocalMotion.current
+    val transition = rememberInfiniteTransition(label = "backgroundDrift")
+    // Target equals start when motion is reduced, so nothing moves.
+    val drift by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (motion.reduced) 0f else 1f,
+        animationSpec = infiniteRepeatable(tween(75_000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "drift"
+    )
+
+    Box(modifier.fillMaxSize().background(colors.background)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val radius = size.minDimension * 0.9f
+            val centerA = Offset(size.width * (0.15f + 0.10f * drift), size.height * 0.10f)
+            val centerB = Offset(size.width * (0.90f - 0.10f * drift), size.height * 0.75f)
+            drawCircle(
+                brush = Brush.radialGradient(listOf(colors.glowA, Color.Transparent), centerA, radius),
+                radius = radius, center = centerA
+            )
+            drawCircle(
+                brush = Brush.radialGradient(listOf(colors.glowB, Color.Transparent), centerB, radius),
+                radius = radius, center = centerB
+            )
+        }
+        content()
+    }
+}
+```
+
+### 13.14.5 `core/design/GlassComponents.kt`
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+/** Scale-down press feedback used by every tappable glass element. */
+fun Modifier.pressScale(source: MutableInteractionSource, pressedScale: Float = 0.96f): Modifier = composed {
+    val motion = LocalMotion.current
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && !motion.reduced) pressedScale else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
+    graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(22.dp),
+    strong: Boolean = false,
+    contentPadding: Dp = 20.dp,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val c = LocalAppColors.current
+    val source = remember { MutableInteractionSource() }
+    val rim = Brush.linearGradient(listOf(c.glassBorder, c.glassBorder.copy(alpha = c.glassBorder.alpha * 0.3f)))
+    val base = modifier
+        .shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = 0.08f), spotColor = Color.Black.copy(alpha = 0.10f))
+        .clip(shape)
+        .background(if (strong) c.glassSurfaceStrong else c.glassSurface)
+        .border(BorderStroke(1.dp, rim), shape)
+    val interactive = if (onClick != null) {
+        base.pressScale(source).clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onClick)
+    } else base
+    Column(interactive.padding(contentPadding), content = content)
+}
+
+@Composable
+fun PrimaryGlassButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    enabled: Boolean = true
+) {
+    val c = LocalAppColors.current
+    val source = remember { MutableInteractionSource() }
+    Row(
+        modifier
+            .heightIn(min = 56.dp)
+            .pressScale(source)
+            .clip(RoundedCornerShape(28.dp))
+            .background(if (enabled) c.accent else c.accent.copy(alpha = 0.35f))
+            .clickable(enabled = enabled, interactionSource = source, indication = null, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) Icon(icon, contentDescription = null, tint = c.onAccent, modifier = Modifier.size(24.dp))
+        Text(text, color = c.onAccent, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+    }
+}
+
+/** 72 dp icon button with a visible label. Used for the Today quick actions. */
+@Composable
+fun QuickActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val source = remember { MutableInteractionSource() }
+    Column(
+        modifier
+            .pressScale(source)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(c.glassSurfaceStrong)
+                .border(1.dp, c.glassBorder, RoundedCornerShape(24.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = c.accent, modifier = Modifier.size(32.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            label,
+            color = c.textPrimary,
+            style = MaterialTheme.typography.labelMedium,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * Lays quick actions out in a grid whose column count adapts to width and font scale,
+ * so labels never clip or overlap (4 columns when they fit, otherwise 2).
+ */
+@Composable
+fun QuickActionGrid(
+    actions: List<Triple<ImageVector, String, () -> Unit>>,
+    modifier: Modifier = Modifier
+) {
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val columns = if (maxWidth >= 360.dp && fontScale <= 1.3f) 4 else 2
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            actions.chunked(columns).forEach { rowItems ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowItems.forEach { (icon, label, action) ->
+                        QuickActionButton(icon, label, action, Modifier.weight(1f))
+                    }
+                    repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+enum class SourceKind { MOSQUE, CALCULATED, MANUAL, TRAVEL }
+
+@Composable
+fun SourceChip(kind: SourceKind, label: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    val c = LocalAppColors.current
+    Row(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(c.accentSoft)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = c.textPrimary, modifier = Modifier.size(20.dp))
+        Text(label, color = c.textPrimary, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+fun StatusBanner(
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    GlassCard(modifier.fillMaxWidth(), strong = true, contentPadding = 16.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, contentDescription = null, tint = c.warning, modifier = Modifier.size(28.dp))
+            Text(message, color = c.textPrimary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
+        PrimaryGlassButton(actionLabel, onAction, Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+fun EmptyState(
+    icon: ImageVector,
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    Column(
+        modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = c.accent, modifier = Modifier.size(56.dp))
+        Text(message, color = c.textPrimary, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+        PrimaryGlassButton(actionLabel, onAction)
+    }
+}
+```
+
+Note: add `import androidx.compose.ui.composed` where the `composed` modifier factory is used, or rewrite `pressScale` with `Modifier.Node` if the compiler warns about `composed`.
+
+### 13.14.6 `core/design/AnimatedIcons.kt`
+
+```kotlin
+package com.namaztimes.app.core.design
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlin.math.min
+
+/** Circle that fills with the accent color while the check mark draws itself (about 350 ms). */
+@Composable
+fun AnimatedCheck(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val progress by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = tween(motion.ms(350), easing = FastOutSlowInEasing),
+        label = "checkProgress"
+    )
+    Canvas(modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        drawCircle(color = c.accent, alpha = progress)
+        drawCircle(color = c.glassBorder, style = Stroke(width = 2.dp.toPx()))
+        if (progress > 0f) {
+            val path = Path().apply {
+                moveTo(w * 0.28f, h * 0.52f)
+                lineTo(w * 0.44f, h * 0.68f)
+                lineTo(w * 0.74f, h * 0.34f)
+            }
+            val measure = PathMeasure()
+            measure.setPath(path, false)
+            val segment = Path()
+            measure.getSegment(0f, measure.length * progress, segment, true)
+            drawPath(
+                segment, color = c.onAccent,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+        }
+    }
+}
+
+/** Bell that swings once with a damped spring when switched on. */
+@Composable
+fun SwingingBell(enabled: Boolean, tint: Color, modifier: Modifier = Modifier, size: Dp = 28.dp) {
+    val motion = LocalMotion.current
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(enabled, motion.reduced) {
+        if (enabled && !motion.reduced) {
+            rotation.animateTo(15f, tween(80))
+            rotation.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = Spring.StiffnessLow))
+        } else {
+            rotation.snapTo(0f)
+        }
+    }
+    Icon(
+        imageVector = if (enabled) Icons.Filled.Notifications else Icons.Outlined.NotificationsOff,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier.size(size).graphicsLayer {
+            rotationZ = rotation.value
+            transformOrigin = TransformOrigin(0.5f, 0f)
+        }
+    )
+}
+
+/** Hero prayer icon with a slow breathing glow. Static when motion is reduced. */
+@Composable
+fun BreathingIcon(icon: ImageVector, modifier: Modifier = Modifier, size: Dp = 48.dp) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val transition = rememberInfiniteTransition(label = "breathing")
+    val breath by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (motion.reduced) 0f else 1f,
+        animationSpec = infiniteRepeatable(tween(3600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breath"
+    )
+    Box(modifier.size(size + 24.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(c.accent.copy(alpha = 0.12f + 0.10f * breath), radius = this.size.minDimension / 2f * (0.92f + 0.08f * breath))
+        }
+        Icon(icon, contentDescription = null, tint = c.accent, modifier = Modifier.size(size).graphicsLayer {
+            scaleX = 1f + 0.04f * breath; scaleY = 1f + 0.04f * breath
+        })
+    }
+}
+
+/**
+ * Countdown whose digits roll upward when they change. Dp-based sizing keeps the whole
+ * string on one line at any font scale (documented exception to sp text sizing).
+ */
+@Composable
+fun RollingCountdown(
+    text: String,            // for example "01:42:09"
+    spokenDescription: String, // for example "1 hour 42 minutes until Asr"
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val digitSize = min(56.dp.value, maxWidth.value / (text.length * 0.62f)).dp
+        val style = TextStyle(
+            color = c.textPrimary,
+            fontSize = with(density) { digitSize.toSp() },
+            fontWeight = FontWeight.SemiBold,
+            fontFeatureSettings = "tnum"
+        )
+        Row(
+            Modifier.clearAndSetSemantics { contentDescription = spokenDescription },
+            horizontalArrangement = Arrangement.Center
+        ) {
+            text.forEach { ch ->
+                if (ch.isDigit()) {
+                    AnimatedContent(
+                        targetState = ch,
+                        transitionSpec = {
+                            (slideInVertically(tween(motion.ms(260))) { it / 2 } + fadeIn(tween(motion.ms(260))))
+                                .togetherWith(slideOutVertically(tween(motion.ms(260))) { -it / 2 } + fadeOut(tween(motion.ms(160))))
+                        },
+                        label = "digit"
+                    ) { digit -> BasicText(digit.toString(), style = style, maxLines = 1, softWrap = false) }
+                } else {
+                    BasicText(ch.toString(), style = style, maxLines = 1, softWrap = false)
+                }
+            }
+        }
+    }
+}
+
+/** Unwraps an angle so the spring always takes the shortest path (no 359° to 0° spin). */
+@Composable
+fun rememberUnwrappedAngle(target: Float): Float {
+    var unwrapped by remember { mutableFloatStateOf(target) }
+    LaunchedEffect(target) {
+        val diff = (((target - unwrapped) % 360f) + 540f) % 360f - 180f
+        unwrapped += diff
+    }
+    return unwrapped
+}
+
+/**
+ * Qibla arrow. [qiblaRelativeDegrees] is the Qibla bearing minus the current device heading
+ * (both degrees clockwise from true north). Glows and pulses once when aligned within 3 degrees.
+ */
+@Composable
+fun QiblaArrow(
+    qiblaRelativeDegrees: Float,
+    hapticsEnabled: Boolean,
+    arrowIcon: ImageVector,
+    modifier: Modifier = Modifier,
+    size: Dp = 220.dp
+) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val haptic = LocalHapticFeedback.current
+    val normalized = ((qiblaRelativeDegrees % 360f) + 540f) % 360f - 180f
+    val aligned = abs(normalized) <= 3f
+    val unwrapped = rememberUnwrappedAngle(qiblaRelativeDegrees)
+    val rotation by animateFloatAsState(
+        targetValue = unwrapped,
+        animationSpec = if (motion.reduced) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
+        label = "qiblaRotation"
+    )
+    val ringColor by animateColorAsState(if (aligned) c.success else c.glassBorder, tween(motion.ms(200)), label = "ring")
+    LaunchedEffect(aligned) {
+        if (aligned && hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress) // once per alignment
+    }
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(ringColor, style = Stroke(width = (if (aligned) 6.dp else 2.dp).toPx()))
+        }
+        Icon(arrowIcon, contentDescription = null, tint = if (aligned) c.success else c.accent,
+            modifier = Modifier.size(size * 0.5f).graphicsLayer { rotationZ = rotation })
+    }
+}
+```
+
+Add `import androidx.compose.animation.animateColorAsState` to this file.
+
+### 13.14.7 `navigation/AppDestination.kt`
+
+```kotlin
+package com.namaztimes.app.navigation
+
+import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.namaztimes.app.R
+
+enum class AppDestination(
+    val route: String,
+    @StringRes val label: Int,
+    val iconOutlined: ImageVector,
+    val iconFilled: ImageVector
+) {
+    TODAY("today", R.string.nav_today, Icons.Outlined.WbSunny, Icons.Filled.WbSunny),
+    QIBLA("qibla", R.string.nav_qibla, Icons.Outlined.Explore, Icons.Filled.Explore),
+    QURAN("quran", R.string.nav_quran, Icons.Outlined.MenuBook, Icons.Filled.MenuBook),
+    PLACES("places", R.string.nav_places, Icons.Outlined.Place, Icons.Filled.Place),
+    MORE("more", R.string.nav_more, Icons.Outlined.GridView, Icons.Filled.GridView);
+
+    companion object {
+        fun fromRoute(route: String?): AppDestination? = entries.firstOrNull { it.route == route }
+    }
+}
+
+/** Secondary (detail) routes. These hide the bottom bar and show a back button. */
+object DetailRoutes {
+    const val MOSQUE_EDITOR = "mosque/{mosqueId}"
+    const val TIMETABLE = "timetable/{mosqueId}"
+    const val HISTORY = "history"
+    const val QADA = "qada"
+    const val CALCULATION = "calculation"
+    const val RELIABILITY = "reliability"
+    const val BACKUP = "backup"
+    const val APPEARANCE = "appearance"
+    const val ONBOARDING = "onboarding"
+}
+```
+
+### 13.14.8 `navigation/GlassBottomBar.kt`
+
+```kotlin
+package com.namaztimes.app.navigation
+
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.namaztimes.app.core.design.LocalAppColors
+import com.namaztimes.app.core.design.LocalMotion
+import com.namaztimes.app.core.design.Motion
+
+val BottomBarHeight = 72.dp
+val BottomBarOuterMargin = 16.dp
+
+@Composable
+fun GlassBottomBar(
+    current: AppDestination?,
+    attentionDot: Set<AppDestination>,
+    onSelect: (AppDestination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val shape = RoundedCornerShape(32.dp)
+    val destinations = AppDestination.entries
+
+    BoxWithConstraints(
+        modifier
+            .padding(horizontal = BottomBarOuterMargin)
+            .navigationBarsPadding()
+            .padding(bottom = BottomBarOuterMargin)
+            .fillMaxWidth()
+            .height(BottomBarHeight)
+            .shadow(12.dp, shape, ambientColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.10f))
+            .clip(shape)
+            .background(c.glassSurfaceStrong)
+            .border(1.dp, c.glassBorder, shape)
+    ) {
+        val itemWidth = maxWidth / destinations.size
+        val index = destinations.indexOf(current).coerceAtLeast(0)
+        val pillOffset by animateDpAsState(
+            targetValue = itemWidth * index,
+            animationSpec = if (motion.reduced) spring(stiffness = Spring.StiffnessHigh)
+            else spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+            label = "pillOffset"
+        )
+        if (current != null) {
+            Box(
+                Modifier
+                    .offset(x = pillOffset)
+                    .width(itemWidth)
+                    .fillMaxHeight()
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(c.accentSoft)
+            )
+        }
+        Row(Modifier.fillMaxSize()) {
+            destinations.forEach { destination ->
+                BottomBarItem(
+                    destination = destination,
+                    selected = destination == current,
+                    showDot = destination in attentionDot,
+                    onClick = { onSelect(destination) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomBarItem(
+    destination: AppDestination,
+    selected: Boolean,
+    showDot: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val motion = LocalMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (selected && !motion.reduced) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+        label = "navIconScale"
+    )
+    val label = stringResource(destination.label)
+    Column(
+        modifier
+            .fillMaxHeight()
+            .heightIn(min = 56.dp)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .semantics { contentDescription = label }
+            .padding(horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box {
+            Crossfade(targetState = selected, animationSpec = androidx.compose.animation.core.tween(motion.ms(Motion.MICRO)), label = "navIcon") { isSelected ->
+                Icon(
+                    imageVector = if (isSelected) destination.iconFilled else destination.iconOutlined,
+                    contentDescription = null,
+                    tint = if (isSelected) c.textPrimary else c.textSecondary,
+                    modifier = Modifier.size(28.dp).graphicsLayer { scaleX = scale; scaleY = scale }
+                )
+            }
+            if (showDot) {
+                Box(Modifier.size(10.dp).align(Alignment.TopEnd).clip(CircleShape).background(c.warning))
+            }
+        }
+        Text(
+            text = label,
+            color = if (selected) c.textPrimary else c.textSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+```
+
+### 13.14.9 `navigation/GlassNavigationRail.kt`
+
+Used on widths of 600 dp and above and in landscape.
+
+```kotlin
+package com.namaztimes.app.navigation
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.namaztimes.app.core.design.LocalAppColors
+
+@Composable
+fun GlassNavigationRail(
+    current: AppDestination?,
+    onSelect: (AppDestination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val shape = RoundedCornerShape(28.dp)
+    Column(
+        modifier
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start))
+            .padding(16.dp)
+            .width(88.dp)
+            .fillMaxHeight()
+            .clip(shape)
+            .background(c.glassSurfaceStrong)
+            .border(1.dp, c.glassBorder, shape)
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AppDestination.entries.forEach { destination ->
+            val selected = destination == current
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .heightIn(min = 64.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(if (selected) c.accentSoft else androidx.compose.ui.graphics.Color.Transparent)
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(destination) })
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    if (selected) destination.iconFilled else destination.iconOutlined,
+                    contentDescription = null,
+                    tint = if (selected) c.textPrimary else c.textSecondary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Text(
+                    stringResource(destination.label),
+                    color = if (selected) c.textPrimary else c.textSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+```
+
+### 13.14.10 `navigation/AppNavHost.kt` (per-tab state, transitions, back stack)
+
+```kotlin
+package com.namaztimes.app.navigation
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.namaztimes.app.core.design.LocalMotion
+import com.namaztimes.app.core.design.Motion
+
+/** Switches tabs while saving and restoring each tab's back stack and scroll state. */
+fun NavHostController.navigateToTab(destination: AppDestination) {
+    navigate(destination.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+/** Re-tapping the active tab pops to that tab's root. The screen itself scrolls to top first if it can. */
+fun NavHostController.popToTabRoot(destination: AppDestination) {
+    popBackStack(destination.route, inclusive = false)
+}
+
+@Composable
+fun AppNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier
+) {
+    val motion = LocalMotion.current
+    val screen = motion.ms(Motion.SCREEN)
+
+    // Fade-through for tab changes.
+    val fadeThroughEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        fadeIn(tween(screen, delayMillis = if (motion.reduced) 0 else 60)) + scaleIn(tween(screen), initialScale = if (motion.reduced) 1f else 0.98f)
+    }
+    val fadeThroughExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        fadeOut(tween(motion.ms(160))) + scaleOut(tween(screen), targetScale = if (motion.reduced) 1f else 0.98f)
+    }
+    // Slide for detail screens.
+    val detailEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+        if (motion.reduced) fadeIn(tween(0)) else slideInHorizontally(tween(screen)) { it / 4 } + fadeIn(tween(screen))
+    }
+    val detailPopExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+        if (motion.reduced) fadeOut(tween(0)) else slideOutHorizontally(tween(screen)) { it / 4 } + fadeOut(tween(screen))
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = AppDestination.TODAY.route,
+        modifier = modifier,
+        enterTransition = fadeThroughEnter,
+        exitTransition = fadeThroughExit,
+        popEnterTransition = fadeThroughEnter,
+        popExitTransition = fadeThroughExit
+    ) {
+        composable(AppDestination.TODAY.route) { /* TodayScreen(...) */ }
+        composable(AppDestination.QIBLA.route) { /* QiblaScreen(...) */ }
+        composable(AppDestination.QURAN.route) { /* QuranScreen(...) */ }
+        composable(AppDestination.PLACES.route) { /* PlacesScreen(...) with Places | Mosques segmented control */ }
+        composable(AppDestination.MORE.route) { /* MoreScreen(...) with grouped rows and search */ }
+
+        composable(
+            DetailRoutes.MOSQUE_EDITOR,
+            arguments = listOf(navArgument("mosqueId") { type = NavType.StringType }),
+            enterTransition = detailEnter, popExitTransition = detailPopExit
+        ) { /* MosqueEditorScreen(...) */ }
+        composable(DetailRoutes.HISTORY, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* HistoryScreen(...) */ }
+        composable(DetailRoutes.QADA, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* QadaScreen(...) */ }
+        composable(DetailRoutes.CALCULATION, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* CalculationSettingsScreen(...) */ }
+        composable(DetailRoutes.RELIABILITY, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* ReliabilityScreen(...) */ }
+        composable(DetailRoutes.BACKUP, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* BackupScreen(...) */ }
+        composable(DetailRoutes.APPEARANCE, enterTransition = detailEnter, popExitTransition = detailPopExit) { /* AppearanceScreen(...) */ }
+    }
+}
+```
+
+The comment placeholders above show where each real screen composable is wired in. In the delivered project every `composable` must call a real, implemented screen. A route with an empty body is not acceptable.
+
+### 13.14.11 `navigation/AppShell.kt` (adaptive shell: bar on phones, rail on wide screens)
+
+```kotlin
+package com.namaztimes.app.navigation
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.namaztimes.app.core.design.GlassBackground
+
+/** Bottom padding every top-level screen must apply to its scrolling content. */
+val LocalContentPadding = compositionLocalOf { PaddingValues(0.dp) }
+
+@Composable
+fun AppShell(
+    windowSizeClass: WindowSizeClass,
+    destinationsNeedingAttention: Set<AppDestination>
+) {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentTab = AppDestination.fromRoute(backStackEntry?.destination?.route)
+    val useRail = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    val density = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
+
+    // Bar shows only on top-level tabs, and hides for the keyboard and for detail screens.
+    val barVisible = currentTab != null && !imeVisible && !useRail
+
+    val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottomPadding = if (barVisible || (!useRail && currentTab != null)) {
+        BottomBarHeight + BottomBarOuterMargin * 2 + navigationInset
+    } else navigationInset
+
+    GlassBackground {
+        Row(Modifier.fillMaxSize()) {
+            if (useRail && currentTab != null) {
+                GlassNavigationRail(
+                    current = currentTab,
+                    onSelect = { tab ->
+                        if (tab == currentTab) navController.popToTabRoot(tab) else navController.navigateToTab(tab)
+                    }
+                )
+            }
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                CompositionLocalProvider(
+                    LocalContentPadding provides PaddingValues(bottom = bottomPadding)
+                ) {
+                    // Content is centered with a maximum width on tablets so lines stay readable.
+                    Box(Modifier.align(Alignment.TopCenter).widthIn(max = 840.dp).fillMaxSize()) {
+                        AppNavHost(navController)
+                    }
+                }
+                AnimatedVisibility(
+                    visible = barVisible,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut()
+                ) {
+                    GlassBottomBar(
+                        current = currentTab,
+                        attentionDot = destinationsNeedingAttention,
+                        onSelect = { tab ->
+                            if (tab == currentTab) navController.popToTabRoot(tab) else navController.navigateToTab(tab)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+### 13.14.12 `MainActivity.kt` (edge-to-edge, theme, window size class)
+
+```kotlin
+package com.namaztimes.app
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.namaztimes.app.core.design.AppTheme
+import com.namaztimes.app.navigation.AppShell
+
+class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            val app = application as NamazTimesApplication
+            val themeMode by app.settingsRepository.themeMode.collectAsState(initial = com.namaztimes.app.core.design.ThemeMode.SYSTEM)
+            val animations by app.settingsRepository.animationSetting.collectAsState(initial = com.namaztimes.app.core.design.AnimationSetting.FOLLOW_SYSTEM)
+            val attention by app.reliabilityRepository.destinationsNeedingAttention.collectAsState(initial = emptySet())
+
+            AppTheme(mode = themeMode, animationSetting = animations) {
+                AppShell(
+                    windowSizeClass = calculateWindowSizeClass(this),
+                    destinationsNeedingAttention = attention
+                )
+            }
+        }
+    }
+}
+```
+
+`settingsRepository.themeMode`, `settingsRepository.animationSetting`, and `reliabilityRepository.destinationsNeedingAttention` are `Flow`s backed by DataStore and the live reliability checks from Part 7.11 (the **More** tab shows the dot when any reliability check fails).
+
+### 13.14.13 `ui/today/PrayerRow.kt`
+
+```kotlin
+package com.namaztimes.app.ui.today
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFeature
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.namaztimes.app.R
+import com.namaztimes.app.core.design.AnimatedCheck
+import com.namaztimes.app.core.design.LocalAppColors
+
+enum class PrayerRowState { UPCOMING, CURRENT, PASSED, MARKED }
+
+data class PrayerRowUi(
+    val id: String,
+    val name: String,
+    val arabicName: String,
+    val adhanLabel: String?,   // null means "not entered"; never a fabricated time
+    val iqamahLabel: String?,
+    val icon: ImageVector,
+    val state: PrayerRowState
+)
+
+@Composable
+fun PrayerRow(
+    item: PrayerRowUi,
+    onToggleMarked: () -> Unit,
+    onOpenDetails: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalAppColors.current
+    val isCurrent = item.state == PrayerRowState.CURRENT
+    val shape = RoundedCornerShape(20.dp)
+    val markedDescription = stringResource(
+        if (item.state == PrayerRowState.MARKED) R.string.state_prayed else R.string.state_not_marked
+    )
+
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clip(shape)
+            .background(if (isCurrent) c.accentSoft else androidx.compose.ui.graphics.Color.Transparent)
+            .then(if (isCurrent) Modifier.border(1.dp, c.accent, shape) else Modifier)
+            .clickable(role = Role.Button, onClick = onOpenDetails)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(c.glassSurfaceStrong),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(item.icon, contentDescription = null, tint = if (isCurrent) c.accent else c.textSecondary, modifier = Modifier.size(28.dp))
+        }
+
+        // Flexible name column: long text wraps or ellipsizes and can never push the times off screen.
+        Column(Modifier.weight(1f)) {
+            Text(item.name, color = c.textPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.arabicName, color = c.textSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.wrapContentWidth()) {
+            Text(
+                item.adhanLabel ?: stringResource(R.string.not_entered),
+                color = c.textPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontSize = 18.sp,
+                fontFeatureSettings = "tnum",
+                textAlign = TextAlign.End,
+                maxLines = 1
+            )
+            Text(
+                item.iqamahLabel?.let { stringResource(R.string.iqamah_value, it) } ?: stringResource(R.string.iqamah_not_entered),
+                color = c.textSecondary,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFeatureSettings = "tnum",
+                textAlign = TextAlign.End,
+                maxLines = 2
+            )
+        }
+
+        // 48 dp minimum touch target around the check.
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Checkbox, onClick = onToggleMarked)
+                .semantics { stateDescription = markedDescription },
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedCheck(checked = item.state == PrayerRowState.MARKED)
+        }
+    }
+}
+```
+
+Use `fontFeatureSettings = "tnum"` on `Text` (it is a `Text` parameter). If the resolved Compose version does not expose it as a parameter, pass it through a `TextStyle`. Do not add the unused `FontFeature` import if it is not needed.
+
+### 13.14.14 `ui/today/TodayScreen.kt` (layout skeleton)
+
+```kotlin
+package com.namaztimes.app.ui.today
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.namaztimes.app.core.design.*
+import com.namaztimes.app.navigation.LocalContentPadding
+
+@Composable
+fun TodayContent(
+    state: TodayUiState,               // from the ViewModel; built from Room and the schedule resolver
+    widthClass: WindowWidthSizeClass,
+    onMarkNext: () -> Unit,
+    onToggle: (String) -> Unit,
+    onOpenRow: (String) -> Unit,
+    quickActions: List<Triple<androidx.compose.ui.graphics.vector.ImageVector, String, () -> Unit>>,
+    modifier: Modifier = Modifier
+) {
+    val bottom = LocalContentPadding.current.calculateBottomPadding()
+    val contentPadding = PaddingValues(
+        start = 20.dp, end = 20.dp,
+        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
+        bottom = bottom + 16.dp
+    )
+
+    if (widthClass == WindowWidthSizeClass.Compact) {
+        LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item { TodayHeader(state) }
+            item { NextPrayerHero(state, onMarkNext) }
+            item { QuickActionGrid(quickActions) }
+            state.banner?.let { banner -> item { StatusBanner(banner.message, banner.actionLabel, banner.onAction, banner.icon) } }
+            item { PrayerTimelineCard(state.rows, onToggle, onOpenRow) }
+        }
+    } else {
+        // Two panes: hero and quick actions on one side, timeline on the other.
+        Row(modifier.fillMaxSize().padding(contentPadding), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                item { TodayHeader(state) }
+                item { NextPrayerHero(state, onMarkNext) }
+                item { QuickActionGrid(quickActions) }
+            }
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                state.banner?.let { banner -> item { StatusBanner(banner.message, banner.actionLabel, banner.onAction, banner.icon) } }
+                item { PrayerTimelineCard(state.rows, onToggle, onOpenRow) }
+            }
+        }
+    }
+}
+```
+
+Implement `TodayHeader`, `NextPrayerHero` (uses `BreathingIcon`, `RollingCountdown`, `SourceChip`, and a thin progress arc), `PrayerTimelineCard` (uses `GlassCard` plus `PrayerRow`, with the connector line filled with `accent` up to the current prayer), and `TodayUiState` as real code. They must follow 13.10 and the no-overlap rules in 13.11. Nothing in `TodayUiState` may contain invented prayer times: a missing time is `null` and rendered as **Not entered**.
+
+### 13.14.15 Required `strings.xml` entries for this section
+
+```xml
+<string name="nav_today">Today</string>
+<string name="nav_qibla">Qibla</string>
+<string name="nav_quran">Quran</string>
+<string name="nav_places">Places</string>
+<string name="nav_more">More</string>
+<string name="not_entered">Not entered</string>
+<string name="iqamah_value">Iqamah %1$s</string>
+<string name="iqamah_not_entered">Iqamah not entered</string>
+<string name="state_prayed">Prayed</string>
+<string name="state_not_marked">Not marked</string>
+```
+
+### 13.14.16 UI tests that must exist
+
+- Compose UI test: at 320, 360, 411, 600, and 840 dp widths with font scales 1.0, 1.5, and 2.0, assert that the bottom bar, hero card, quick actions, and every prayer row are displayed and their bounds do not intersect (use `getBoundsInRoot()` comparisons between siblings).
+- Tab switch test: selecting each tab navigates, restores that tab's scroll position, and moves the selection pill.
+- Re-tap test: tapping the active tab pops to its root.
+- Keyboard test: opening the keyboard hides the bottom bar and keeps the focused field visible.
+- Reduce Motion test: with `AnimationSetting.OFF`, `Motion.ms(...)` returns 0 and no infinite animation changes values.
+- Theme test: switching System, Light, and Dark updates colors without recreating the activity and persists after restart.
+- Check animation test: toggling a prayer row changes its semantics state between Prayed and Not marked.
 
 ---
 
 # PART 14 — SCREEN-BY-SCREEN REQUIREMENTS
+
+All screens must use the design system, components, navigation, and responsive/no-overlap rules from Part 13. The top-level bottom-navigation order is **Today, Qibla, Quran, Places, More**. Mosque profiles are a segment inside Places; History, Qada, Calculation, Reliability, Backup, and all settings are inside More. The Daily Hadith feature does not exist in this app.
 
 ## 14.1 Today screen
 
@@ -1691,7 +3254,7 @@ Create a restrained, recognizable mark:
 - Clean geometry that remains identifiable at small sizes.
 - No tiny text.
 - Strong silhouette on both light and dark launchers.
-- Use the same accent palette as the app.
+- Use the same yellow accent palette as the app (golden yellow background `#F5B700` with a dark `#1C1500` or white silhouette, whichever passes contrast on both light and dark launchers).
 
 Do not copy an existing commercial prayer app icon.
 
@@ -1723,7 +3286,7 @@ Example background color resource:
 
 ```xml
 <resources>
-    <color name="launcher_background">#0D6B62</color>
+    <color name="launcher_background">#F5B700</color>
 </resources>
 ```
 
@@ -2166,8 +3729,9 @@ Build in controlled passes while preserving prior work:
 
 ### Pass 1 — Foundation
 
-- Native Android project, Compose, theme, navigation, Room, DataStore.
-- Icon, splash, app shell, bottom navigation.
+- Native Android project, Compose, Room, DataStore.
+- Complete design system from Part 13 (colors, theme, glass components, motion, animated icons) and the reference code in 13.14.
+- App shell with the floating glass bottom bar and the wide-screen rail, per-tab back stacks, edge-to-edge insets, launcher icon, and splash.
 - Local-only/privacy baseline.
 
 ### Pass 2 — Mosque and schedule data
@@ -2286,8 +3850,13 @@ Do not consider Namaz Times complete until all applicable items below are true.
 
 ## Design and privacy
 
-- [ ] Light frosted-glass theme works.
-- [ ] Deep-black frosted-glass theme works.
+- [ ] Light glassmorphism theme with yellow accent works.
+- [ ] Dark glassmorphism theme with yellow accent works, and System/Light/Dark switching is instant and persisted.
+- [ ] Large icon buttons, large text, and 48 dp+ touch targets are used throughout.
+- [ ] Icon animations, screen transitions, and Reduce Motion behavior match Part 13.
+- [ ] Floating glass bottom navigation (rail on wide screens) keeps per-tab state and never covers content.
+- [ ] No text, button, icon, or card overlaps or clips at 320–840 dp widths and up to 200% font scale.
+- [ ] No Daily Hadith content exists anywhere in the app.
 - [ ] UI is one-handed and responsive.
 - [ ] Android launcher/adaptive/monochrome/notification icons are included.
 - [ ] No dead buttons or placeholder screens.
@@ -2400,22 +3969,22 @@ Use a real Android vector asset as the foreground. The final design can be refin
 
     <!-- Left minaret -->
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="#FF1C1500"
         android:pathData="M17,42 L17,25 L21,19 L25,25 L25,42 L28,46 L28,86 L14,86 L14,46 Z" />
 
     <!-- Right minaret -->
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="#FF1C1500"
         android:pathData="M83,42 L83,25 L87,19 L91,25 L91,42 L94,46 L94,86 L80,86 L80,46 Z" />
 
     <!-- Main mosque silhouette -->
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="#FF1C1500"
         android:pathData="M28,55 L28,48 C28,29 39,17 54,17 C69,17 80,29 80,48 L80,55 L86,55 L86,86 L22,86 L22,55 Z" />
 
     <!-- Crescent accent -->
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="#FF1C1500"
         android:pathData="M68,12 C61,12 55,18 55,26 C55,34 61,40 69,40 C64,36 62,31 62,26 C62,20 64,15 68,12 Z" />
 </vector>
 ```
