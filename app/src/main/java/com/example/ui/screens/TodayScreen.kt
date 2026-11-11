@@ -63,8 +63,6 @@ import com.example.domain.model.AppSettings
 import com.example.domain.model.LocationMode
 import com.example.domain.model.PrayerEventType
 import com.example.domain.model.PrayerName
-import com.example.domain.model.HadithRepository
-import com.example.domain.model.DailyHadith
 import com.example.domain.model.ResolvedPrayerTime
 import com.example.navigation.PermissionActions
 import com.example.prayer.TodayContext
@@ -119,9 +117,6 @@ fun TodayScreen(
                 onOpenMosques = onOpenMosques,
                 onOpenQibla = onOpenQibla
             )
-        }
-        item {
-            DailyHadithCard(date = today?.today ?: LocalDate.now())
         }
         item { ReminderWarnings(state, viewModel, permissions, onOpenMosques) }
 
@@ -516,56 +511,6 @@ private fun NextPrayerCard(
                     modifier = Modifier.weight(1f)
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun DailyHadithCard(date: LocalDate) {
-    val hadith = remember(date) { HadithRepository.forDate(date) }
-    FrostedCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = AppColors.Gold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Daily Hadith",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Pill(hadith.topic)
-            }
-            Text(
-                hadith.arabicText,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.Gold,
-                    lineHeight = 24.sp
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                "“${hadith.englishTranslation}”",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                )
-            )
-            Text(
-                "— ${hadith.narrator} · ${hadith.source}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

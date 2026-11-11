@@ -16,3 +16,6 @@
 local.properties
 .env
 debug.keystore
+
+# Local Android SDK used for verification
+.android-sdk/
