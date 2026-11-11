@@ -31,6 +31,12 @@ interface QuranDao {
     @Query("SELECT * FROM quran_sessions ORDER BY occurredAtMillis DESC LIMIT 1")
     suspend fun latestSession(): QuranSessionEntity?
 
+    @Query("DELETE FROM quran_sessions WHERE surah = :surah AND rukuNumber = :rukuNumber")
+    suspend fun deleteSessionBySurahAndRuku(surah: String, rukuNumber: Int)
+
+    @Query("SELECT * FROM quran_sessions WHERE surah IS NOT NULL AND rukuNumber IS NOT NULL")
+    suspend fun getRukuMarkedSessions(): List<QuranSessionEntity>
+
     @Query("DELETE FROM quran_sessions")
     suspend fun deleteAllSessions()
 

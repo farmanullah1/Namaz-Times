@@ -45,6 +45,7 @@ import com.example.domain.model.PrayerName
 import com.example.domain.model.WallClock
 import com.example.ui.AppUiState
 import com.example.ui.AppViewModel
+import com.example.ui.components.PrayerHistoryHeatmap
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -100,6 +101,13 @@ fun HistoryScreen(
                 InfoBanner(
                     "A prayer is recorded only when you mark it. If a prayer is missed, leave it unmarked; " +
                         "nothing is inferred from time passing."
+                )
+            }
+
+            item {
+                PrayerHistoryHeatmap(
+                    history = state.history,
+                    zone = state.today?.zone ?: ZoneId.systemDefault()
                 )
             }
 

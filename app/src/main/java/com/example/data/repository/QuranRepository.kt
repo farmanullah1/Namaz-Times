@@ -62,6 +62,20 @@ class QuranRepository(private val database: NamazDatabase) {
         return latest.toDomain()
     }
 
+    suspend fun deleteRukuSession(surah: String, rukuNumber: Int) {
+        database.quranDao().deleteSessionBySurahAndRuku(surah, rukuNumber)
+    }
+
+    suspend fun markedRukuKeys(): Set<String> {
+        return database.quranDao().getRukuMarkedSessions()
+            .mapNotNull {
+                val s = it.surah ?: return@mapNotNull null
+                val r = it.rukuNumber ?: return@mapNotNull null
+                "$s:$r"
+            }
+            .toSet()
+    }
+
     /** Sets a day's total by appending a correction delta; the original entries stay in the audit trail. */
     suspend fun correctDayTotal(date: LocalDate, newTotal: Int, reason: String): Result<Int> {
         if (newTotal < 0) return Result.failure(IllegalArgumentException("Total cannot be negative."))

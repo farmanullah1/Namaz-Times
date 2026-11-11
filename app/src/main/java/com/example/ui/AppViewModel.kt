@@ -29,6 +29,7 @@ import com.example.domain.model.QuranDayBoundary
 import com.example.domain.model.QuranResetRule
 import com.example.domain.model.QuranSettings
 import com.example.domain.model.QuranSnapshot
+import com.example.domain.model.QuranStructureData
 import com.example.domain.model.ReminderPreference
 import com.example.domain.model.ReminderSoundMode
 import com.example.domain.model.SavedPlace
@@ -57,6 +58,7 @@ data class AppUiState(
     val qada: List<QadaRecord> = emptyList(),
     val quran: QuranSnapshot = QuranSnapshot(),
     val quranSessionsToday: List<QuranSession> = emptyList(),
+    val markedRukuKeys: Set<String> = emptySet(),
     val hijri: HijriInfo? = null,
     val nowMillis: Long = System.currentTimeMillis(),
     val countdownMillis: Long = 0,
@@ -167,6 +169,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val quranKey = quranDateKey(quranSettings, today, now)
         val quranSnapshot = graph.quranRepository.snapshot(quranKey, quranSettings)
         val sessions = graph.quranRepository.sessionsForDate(quranKey)
+        val markedRukus = graph.quranRepository.markedRukuKeys()
 
         val maghrib = today.resolved[PrayerName.MAGHRIB]?.adhan
         val maghribPassed = maghrib != null && now.isAfter(maghrib)
@@ -200,6 +203,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 qada = qada,
                 quran = quranSnapshot,
                 quranSessionsToday = sessions,
+                markedRukuKeys = markedRukus,
                 hijri = hijri,
                 nowMillis = now.toEpochMilli(),
                 countdownMillis = today.next?.instant?.toEpochMilli()?.minus(now.toEpochMilli())?.coerceAtLeast(0) ?: 0,
@@ -433,6 +437,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun undoLastRuku() = action {
         val removed = graph.quranRepository.undoLast()
         postMessage(if (removed != null) "Last reading entry removed." else "There is no reading entry to undo.")
+    }
+
+    fun toggleRukuCheckoff(surahName: String, rukuNumber: Int, isChecked: Boolean) = action {
+        val (_, dateKey) = quranContext()
+        if (isChecked) {
+            graph.quranRepository.addRukus(
+                dateKey = dateKey,
+                count = 1,
+                surah = surahName,
+                rukuNumber = rukuNumber,
+                note = "Checked from Ruku checklist"
+            )
+            postMessage("Ruku $rukuNumber of $surahName marked read.")
+        } else {
+            graph.quranRepository.deleteRukuSession(surahName, rukuNumber)
+            postMessage("Ruku $rukuNumber of $surahName unmarked.")
+        }
+    }
+
+    fun quickAddRukus(count: Int) = action {
+        val (_, dateKey) = quranContext()
+        val result = graph.quranRepository.addRukus(
+            dateKey = dateKey,
+            count = count,
+            note = "Quick log (+$count)"
+        )
+        result.fold(
+            onSuccess = { postMessage("Added $count Ruku${if (count > 1) "s" else ""} for today.") },
+            onFailure = { postMessage(it.message ?: "Could not log Rukus.") }
+        )
+    }
+
+    fun setKhatamTargetDate(targetDate: LocalDate) = action {
+        val snapshot = _uiState.value.quran
+        val remaining = (QuranStructureData.TOTAL_RUKUS - snapshot.totalCompleted).coerceAtLeast(1)
+        val pace = QuranStructureData.calculateRequiredPace(remaining, targetDate = targetDate)
+        val current = graph.settingsRepository.current().quran
+        val (_, todayKey) = quranContext()
+        graph.quranRepository.setDailyGoal(pace, todayKey.plusDays(1))
+        graph.settingsRepository.setQuranSettings(current.copy(dailyGoal = pace))
+        postMessage("Khatam target set. Daily goal updated to $pace Rukus per day.")
     }
 
     fun correctQuranDay(date: LocalDate, newTotal: Int, reason: String) = action {

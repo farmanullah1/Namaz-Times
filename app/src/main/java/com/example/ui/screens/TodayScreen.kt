@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MenuBook
+import com.example.ui.components.FiqhGuideDialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -88,6 +90,7 @@ fun TodayScreen(
     val completed = remember(state.history) { state.history.associateBy { it.prayer } }
     var showMarkDialog by remember { mutableStateOf(false) }
     var showSoundSheet by remember { mutableStateOf(false) }
+    var showFiqhGuide by remember { mutableStateOf(false) }
     var detailPrayer by remember { mutableStateOf<PrayerName?>(null) }
 
     LazyColumn(
@@ -95,7 +98,14 @@ fun TodayScreen(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        item { TodayHeader(state, today, onOpenPlaces) }
+        item {
+            TodayHeader(
+                state = state,
+                today = today,
+                onOpenPlaces = onOpenPlaces,
+                onOpenFiqhGuide = { showFiqhGuide = true }
+            )
+        }
         item {
             val nextPrayer = today?.next?.prayer
             NextPrayerCard(
@@ -211,10 +221,19 @@ fun TodayScreen(
             onDismiss = { showSoundSheet = false }
         )
     }
+
+    if (showFiqhGuide) {
+        FiqhGuideDialog(onDismiss = { showFiqhGuide = false })
+    }
 }
 
 @Composable
-private fun TodayHeader(state: AppUiState, today: TodayContext?, onOpenPlaces: () -> Unit) {
+private fun TodayHeader(
+    state: AppUiState,
+    today: TodayContext?,
+    onOpenPlaces: () -> Unit,
+    onOpenFiqhGuide: () -> Unit
+) {
     val date = today?.today ?: LocalDate.now()
     val dateLabel = date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault()))
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -295,13 +314,50 @@ private fun TodayHeader(state: AppUiState, today: TodayContext?, onOpenPlaces: (
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Text(
-                        today?.place?.displayName ?: (if (today?.travelMode == true) "Travel mode" else "Automatic place switching"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            today?.place?.displayName ?: (if (today?.travelMode == true) "Travel mode" else "Automatic place switching"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (state.settings.locationMode == LocationMode.AUTOMATIC) {
+                            Pill("Auto Geofenced", color = AppColors.Emerald)
+                        }
+                    }
                 }
                 Text("Change", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                onClick = onOpenFiqhGuide
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MenuBook,
+                        contentDescription = null,
+                        tint = AppColors.Gold,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Ahl al-Hadith Fiqh Guide",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = AppColors.Gold
+                    )
+                }
             }
         }
     }
