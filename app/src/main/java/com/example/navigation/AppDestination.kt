@@ -34,9 +34,9 @@ enum class MainTab(
     val icon: ImageVector
 ) {
     TODAY(AppDestination.Today, "Today", Icons.Default.AccessTime),
-    PLACES(AppDestination.Places, "Places", Icons.Default.Place),
     QIBLA(AppDestination.Qibla, "Qibla", Icons.Default.Explore),
     QURAN(AppDestination.Quran, "Quran", Icons.Default.MenuBook),
+    PLACES(AppDestination.Places, "Places", Icons.Default.Place),
     MORE(AppDestination.More, "More", Icons.Default.MoreHoriz)
 }
 

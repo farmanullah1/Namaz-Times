@@ -17,64 +17,66 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 object AppColors {
-    val LightBackground = Color(0xFFF4F5F7)
-    val LightBackgroundAlt = Color(0xFFE8EDF0)
-    val LightSurface = Color(0xCCFFFFFF)
-    val LightRim = Color(0x55FFFFFF)
-    val Ink = Color(0xFF12161A)
-    val InkSecondary = Color(0xFF5A646C)
-    val Teal = Color(0xFF0D6B62)
-    val TealSoft = Color(0xFFDCEEEB)
-    val Gold = Color(0xFFD4AF37)
-    val GoldSoft = Color(0xFFFDF0CC)
-    val Emerald = Color(0xFF0D5A3D)
+    val LightBackground = Color(0xFFF7F5EF)
+    val LightBackgroundAlt = Color(0xFFFFF6DA)
+    val LightSurface = Color(0x9EFFFFFF)
+    val LightRim = Color(0xCCFFFFFF)
+    val Ink = Color(0xFF17140A)
+    val InkSecondary = Color(0xFF5E5842)
+    val Teal = Color(0xFFF5B700)
+    val TealSoft = Color(0x2EF5B700)
+    val Gold = Color(0xFFC97A00)
+    val GoldSoft = Color(0xFFFFEFC2)
+    val Emerald = Color(0xFF2E9E5B)
     val EmeraldSoft = Color(0xFFE2F3EC)
-    val Warning = Color(0xFF9A5B12)
+    val Warning = Color(0xFFC97A00)
 
-    val DarkBackground = Color(0xFF050607)
-    val DarkBackgroundAlt = Color(0xFF0E1114)
-    val DarkSurface = Color(0xB3161A1E)
-    val DarkRim = Color(0x1FFFFFFF)
-    val OffWhite = Color(0xFFF2F5F7)
-    val Muted = Color(0xFFA8B2BA)
-    val Mint = Color(0xFF5FD3C2)
-    val EmeraldDark = Color(0xFF072B1F)
-    val KaabaGold = Color(0xFFD4AF37)
-    val KaabaGoldGlow = Color(0xFFFFDF7D)
+    val DarkBackground = Color(0xFF0B0B0D)
+    val DarkBackgroundAlt = Color(0xFF141416)
+    val DarkSurface = Color(0x941A1A1F)
+    val DarkRim = Color(0x24FFFFFF)
+    val OffWhite = Color(0xFFF5F2E8)
+    val Muted = Color(0xFFB9B49F)
+    val Mint = Color(0xFFFFCB2E)
+    val EmeraldDark = Color(0xFF123B29)
+    val KaabaGold = Color(0xFFFFCB2E)
+    val KaabaGoldGlow = Color(0xFFFFE08A)
 }
+
+private val OnAccent = Color(0xFF1C1500)
 
 private val LightScheme = lightColorScheme(
     primary = AppColors.Teal,
-    onPrimary = Color.White,
-    primaryContainer = AppColors.TealSoft,
-    onPrimaryContainer = Color(0xFF04332E),
+    onPrimary = OnAccent,
+    primaryContainer = AppColors.GoldSoft,
+    onPrimaryContainer = AppColors.Ink,
     secondary = AppColors.Gold,
     onSecondary = Color.White,
     background = AppColors.LightBackground,
     onBackground = AppColors.Ink,
-    surface = Color(0xFFFDFDFE),
+    surface = Color(0xFFFDFBF5),
     onSurface = AppColors.Ink,
-    surfaceVariant = Color(0xFFE3E8EC),
+    surfaceVariant = Color(0xFFEDE7D8),
     onSurfaceVariant = AppColors.InkSecondary,
-    outline = Color(0xFFCBD3D9),
-    error = Color(0xFF8C2F2F)
+    outline = Color(0xFFD8CFB8),
+    error = Color(0xFFC93A2E)
 )
 
 private val DarkScheme = darkColorScheme(
     primary = AppColors.Mint,
-    onPrimary = Color(0xFF032C27),
-    primaryContainer = Color(0xFF12332F),
+    onPrimary = OnAccent,
+    primaryContainer = Color(0xFF3A2C00),
     onPrimaryContainer = AppColors.Mint,
-    secondary = Color(0xFFC9A96E),
-    onSecondary = Color(0xFF241A08),
+    secondary = AppColors.Muted,
+    onSecondary = AppColors.DarkBackground,
     background = AppColors.DarkBackground,
     onBackground = AppColors.OffWhite,
-    surface = Color(0xFF111417),
+    surface = Color(0xFF1A1A1F),
     onSurface = AppColors.OffWhite,
-    surfaceVariant = Color(0xFF1C2126),
+    surfaceVariant = Color(0xFF26262C),
     onSurfaceVariant = AppColors.Muted,
-    outline = Color(0xFF2C343B),
-    error = Color(0xFFE8A3A3)
+    outline = Color(0xFF3A3A42),
+    error = Color(0xFFFF6B5E)
 )
 
 private val AppTypography = Typography().copy(

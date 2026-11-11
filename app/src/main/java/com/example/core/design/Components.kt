@@ -127,8 +127,8 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun Pill(
     text: String,
-    color: Color = MaterialTheme.colorScheme.primary,
-    background: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    background: Color = MaterialTheme.colorScheme.primaryContainer
 ) {
     Surface(
         shape = RoundedCornerShape(999.dp),
@@ -200,7 +200,7 @@ fun NavigationRow(title: String, subtitle: String? = null, onClick: () -> Unit, 
             }
         }
         if (trailing != null) {
-            Text(trailing, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text(trailing, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text("  ›", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -274,7 +274,7 @@ fun TimeEntryField(
         Spacer(Modifier.width(8.dp))
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.clickable(enabled = enabled) {
                 val initial = parsed ?: LocalTime.of(5, 0)
                 TimePickerDialog(
@@ -290,7 +290,7 @@ fun TimeEntryField(
                 "Pick",
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

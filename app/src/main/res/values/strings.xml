@@ -3,6 +3,17 @@
     <string name="app_name">Namaz Times</string>
     <string name="widget_next_description">Next prayer and countdown</string>
     <string name="widget_combined_description">Next prayer, Hijri date and Qibla shortcut</string>
+    <string name="widget_compact_description">Next prayer name and time</string>
+    <string name="widget_qibla_description">Qibla bearing shortcut</string>
+    <string name="widget_hijri_description">Hijri date and adjustment marker</string>
+    <string name="widget_qibla_heading">QIBLA</string>
+    <string name="widget_hijri_heading">HIJRI DATE</string>
+    <string name="shortcut_next_short">Next prayer</string>
+    <string name="shortcut_next_long">Open today\'s prayer timeline</string>
+    <string name="shortcut_qibla_short">Qibla</string>
+    <string name="shortcut_qibla_long">Open the Qibla compass</string>
+    <string name="shortcut_ruku_short">Add Ruku</string>
+    <string name="shortcut_ruku_long">Log a Quran Ruku reading</string>
     <string name="notification_channel_adhan">Prayer Adhan</string>
     <string name="notification_channel_iqamah">Iqamah</string>
     <string name="notification_channel_pre">Pre-prayer reminders</string>

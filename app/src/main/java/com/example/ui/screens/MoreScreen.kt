@@ -123,7 +123,7 @@ fun MoreScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Home screen widgets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Namaz Times adds two widgets from your launcher: Today (next prayer) and Combined (today and next). " +
+                        "Namaz Times adds five widgets from your launcher: Next prayer, Compact, Qibla, Hijri and Combined. " +
                             "Long-press your home screen, choose Widgets, then Namaz Times. Widgets show only times already " +
                             "resolved by the app and refresh when the timetable or selection changes.",
                         style = MaterialTheme.typography.bodySmall,

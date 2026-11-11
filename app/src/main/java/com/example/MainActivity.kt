@@ -52,5 +52,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_DESTINATION = "destination"
         const val DESTINATION_TODAY = "today"
         const val DESTINATION_QIBLA = "qibla"
+        const val DESTINATION_QURAN = "quran"
     }
 }

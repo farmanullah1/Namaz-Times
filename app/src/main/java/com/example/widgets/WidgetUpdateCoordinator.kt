@@ -20,7 +20,9 @@ import com.example.prayer.AdhanPrayerCalculator
 import com.example.prayer.MosqueScheduleResolver
 import com.example.prayer.PrayerOccurrenceFactory
 import com.example.prayer.PrayerScheduleService
+import com.example.qibla.QiblaCalculator
 import java.time.Instant
+import kotlin.math.roundToInt
 
 data class WidgetSnapshot(
     val mosqueName: String,
@@ -31,6 +33,8 @@ data class WidgetSnapshot(
     val countdownLabel: String,
     val sourceLabel: String,
     val hijriLabel: String,
+    val qiblaLabel: String,
+    val qiblaDetail: String,
     val stale: Boolean
 )
 
@@ -48,7 +52,10 @@ class WidgetUpdateCoordinator(private val context: Context) {
 
     suspend fun refreshAll() {
         refreshIds(TodayWidgetProvider::class.java, widgetIds(TodayWidgetProvider::class.java))
+        refreshIds(CompactWidgetProvider::class.java, widgetIds(CompactWidgetProvider::class.java))
         refreshIds(CombinedWidgetProvider::class.java, widgetIds(CombinedWidgetProvider::class.java))
+        refreshIds(QiblaWidgetProvider::class.java, widgetIds(QiblaWidgetProvider::class.java))
+        refreshIds(HijriWidgetProvider::class.java, widgetIds(HijriWidgetProvider::class.java))
     }
 
     suspend fun refreshIds(providerClass: Class<*>, ids: IntArray) {
@@ -58,47 +65,83 @@ class WidgetUpdateCoordinator(private val context: Context) {
             return
         }
         val manager = AppWidgetManager.getInstance(context)
+        val layout = layoutFor(providerClass)
         ids.forEach { widgetId ->
-            val layout = if (providerClass == CombinedWidgetProvider::class.java) {
-                R.layout.widget_combined
-            } else {
-                R.layout.widget_today
-            }
             val views = RemoteViews(context.packageName, layout)
-            views.setTextViewText(R.id.widget_mosque, snapshot.mosqueName)
-            views.setTextViewText(R.id.widget_prayer, snapshot.nextPrayerTitle)
-            views.setTextViewText(R.id.widget_time, snapshot.timeLabel)
-            views.setTextViewText(R.id.widget_countdown, snapshot.countdownLabel)
-            views.setTextViewText(R.id.widget_status, snapshot.sourceLabel)
-            if (layout == R.layout.widget_combined) {
-                views.setTextViewText(R.id.widget_hijri, snapshot.hijriLabel)
-                views.setOnClickPendingIntent(R.id.widget_qibla, openAppIntent(MainActivity.DESTINATION_QIBLA, 9001))
+            when (layout) {
+                R.layout.widget_compact -> {
+                    views.setTextViewText(R.id.widget_prayer, snapshot.nextPrayerTitle)
+                    views.setTextViewText(R.id.widget_time, snapshot.timeLabel)
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
+
+                R.layout.widget_qibla -> {
+                    views.setTextViewText(R.id.widget_qibla_bearing, snapshot.qiblaLabel)
+                    views.setTextViewText(R.id.widget_qibla_status, snapshot.qiblaDetail)
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_QIBLA, 9001))
+                }
+
+                R.layout.widget_hijri -> {
+                    views.setTextViewText(R.id.widget_hijri_date, snapshot.hijriLabel)
+                    views.setTextViewText(R.id.widget_status, snapshot.mosqueName)
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
+
+                else -> {
+                    views.setTextViewText(R.id.widget_mosque, snapshot.mosqueName)
+                    views.setTextViewText(R.id.widget_prayer, snapshot.nextPrayerTitle)
+                    views.setTextViewText(R.id.widget_time, snapshot.timeLabel)
+                    views.setTextViewText(R.id.widget_countdown, snapshot.countdownLabel)
+                    views.setTextViewText(R.id.widget_status, snapshot.sourceLabel)
+                    views.setTextViewText(R.id.widget_iqamah, snapshot.iqamahLabel ?: "Iqamah not entered")
+                    if (layout == R.layout.widget_combined) {
+                        views.setTextViewText(R.id.widget_hijri, snapshot.hijriLabel)
+                        views.setOnClickPendingIntent(R.id.widget_qibla, openAppIntent(MainActivity.DESTINATION_QIBLA, 9001))
+                    }
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
             }
-            views.setTextViewText(R.id.widget_iqamah, snapshot.iqamahLabel ?: "Iqamah not entered")
-            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
             manager.updateAppWidget(widgetId, views)
         }
     }
 
     private fun renderSetup(providerClass: Class<*>, ids: IntArray) {
         val manager = AppWidgetManager.getInstance(context)
+        val layout = layoutFor(providerClass)
         ids.forEach { widgetId ->
-            val layout = if (providerClass == CombinedWidgetProvider::class.java) {
-                R.layout.widget_combined
-            } else {
-                R.layout.widget_today
-            }
             val views = RemoteViews(context.packageName, layout)
-            views.setTextViewText(R.id.widget_mosque, "Namaz Times")
-            views.setTextViewText(R.id.widget_prayer, "Set up your mosque")
-            views.setTextViewText(R.id.widget_time, "—")
-            views.setTextViewText(R.id.widget_iqamah, "No timetable yet")
-            views.setTextViewText(R.id.widget_countdown, "Open the app to add a place and mosque.")
-            views.setTextViewText(R.id.widget_status, "Tap to set up")
-            if (layout == R.layout.widget_combined) {
-                views.setTextViewText(R.id.widget_hijri, "")
+            when (layout) {
+                R.layout.widget_compact -> {
+                    views.setTextViewText(R.id.widget_prayer, "Namaz Times")
+                    views.setTextViewText(R.id.widget_time, "—")
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
+
+                R.layout.widget_qibla -> {
+                    views.setTextViewText(R.id.widget_qibla_bearing, "—")
+                    views.setTextViewText(R.id.widget_qibla_status, "Add a place to calculate Qibla")
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_QIBLA, 9001))
+                }
+
+                R.layout.widget_hijri -> {
+                    views.setTextViewText(R.id.widget_hijri_date, "Hijri date")
+                    views.setTextViewText(R.id.widget_status, "Open the app to set up")
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
+
+                else -> {
+                    views.setTextViewText(R.id.widget_mosque, "Namaz Times")
+                    views.setTextViewText(R.id.widget_prayer, "Set up your mosque")
+                    views.setTextViewText(R.id.widget_time, "—")
+                    views.setTextViewText(R.id.widget_iqamah, "No timetable yet")
+                    views.setTextViewText(R.id.widget_countdown, "Open the app to add a place and mosque.")
+                    views.setTextViewText(R.id.widget_status, "Tap to set up")
+                    if (layout == R.layout.widget_combined) {
+                        views.setTextViewText(R.id.widget_hijri, "")
+                    }
+                    views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
+                }
             }
-            views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(MainActivity.DESTINATION_TODAY, 9000))
             manager.updateAppWidget(widgetId, views)
         }
     }
@@ -130,6 +173,19 @@ class WidgetUpdateCoordinator(private val context: Context) {
         )
         val stale = settings.lastSuccessfulRebuildMillis == null ||
             now.toEpochMilli() - settings.lastSuccessfulRebuildMillis > 24 * 60 * 60 * 1000L
+        val coordinates = today.place?.let { place ->
+            place.latitude?.let { lat -> place.longitude?.let { lon -> lat to lon } }
+        } ?: today.mosque?.let { mosque ->
+            mosque.latitude?.let { lat -> mosque.longitude?.let { lon -> lat to lon } }
+        }
+        val qiblaLabel = coordinates?.let { (lat, lon) ->
+            "${QiblaCalculator.bearingFromTrueNorth(lat, lon).roundToInt()}°"
+        } ?: "—"
+        val qiblaDetail = if (coordinates != null) {
+            "From true north · tap to open"
+        } else {
+            "Add a place to calculate"
+        }
 
         return WidgetSnapshot(
             mosqueName = today.mosque?.name ?: "Calculated — travel mode",
@@ -144,6 +200,8 @@ class WidgetUpdateCoordinator(private val context: Context) {
                 "${next.source.label} · ${today.calculationLabel}"
             },
             hijriLabel = hijri.formatted + if (hijri.isAdjusted) " (adjusted)" else "",
+            qiblaLabel = qiblaLabel,
+            qiblaDetail = qiblaDetail,
             stale = stale
         )
     }
@@ -171,6 +229,14 @@ class WidgetUpdateCoordinator(private val context: Context) {
             intent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private fun layoutFor(providerClass: Class<*>): Int = when (providerClass) {
+        CombinedWidgetProvider::class.java -> R.layout.widget_combined
+        CompactWidgetProvider::class.java -> R.layout.widget_compact
+        QiblaWidgetProvider::class.java -> R.layout.widget_qibla
+        HijriWidgetProvider::class.java -> R.layout.widget_hijri
+        else -> R.layout.widget_today
     }
 
     private fun widgetIds(providerClass: Class<*>): IntArray =
